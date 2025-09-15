@@ -1,0 +1,145 @@
+.contacts-page {
+  background-color: #f0f3f6;
+  min-width: 100vw;
+  min-height: 100vh;   
+  margin: 0;
+  color: #000;
+  padding: 100px 20px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;           
+}
+
+.quicksand {
+  font-family: "Quicksand", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.container {
+  display: flex;
+  flex-direction: column; 
+  align-items: center;
+  gap: 20px;
+}
+
+.container h1 {
+  font-weight: 600;
+  margin: 0;
+  color: #6f8fd0; 
+  font-weight: 700;        
+}
+
+.container a{
+  color: #000;
+}
+
+.owners-flex {
+  background-color: #6f8fd0;
+  display: flex;
+  color: #000;
+  justify-content: space-around;
+  align-items: flex-start;
+  width: 80vw;
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  gap: 30px;
+}
+
+.owner-card{
+  background-color:#f0f3f6;
+  border-radius: 8px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.3);
+  gap: 20px;
+  color:#6f8fd0 ;
+  min-width: 300px;
+  text-align: center;
+}
+
+.faqs{
+  display: flex;
+  flex-direction: column;
+  background-color: #cad8f6;
+  min-width: 80vw;
+  height: 550px;
+  gap: 20px;
+  border-radius:10px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+.faqs h2{
+  text-align: center;
+}
+
+.faqs div{
+  background-color: #fcdc90;
+  margin: 10px 30px;
+  padding: 0px 20px;
+  text-align: justify;
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.3);
+}
+
+.query-form {
+  background: #adc9f4;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+  min-width: 40vw;
+  margin: 40px auto;
+}
+
+.query-form h2 {
+  font-weight: 700;
+  text-align: center;
+  font-size: 30px;
+}
+
+.query-form form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.query-form label {
+  display: flex;
+  flex-direction: column;
+  font-weight: 600;
+  color: #333;
+  gap: 10px;
+}
+
+.query-form input,
+.query-form textarea {
+  padding: 10px;
+  border-radius: 8px;
+  min-width: 250px;
+  background-color: #fdc0b6;
+  border: none;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+.query-form button {
+  background-color: #6f8fd0;
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.query-form button:hover {
+  background-color: #cadbf5;
+}
+
+.status {
+  margin-top: 15px;
+  text-align: center;
+  font-weight: 500;
+  font-size: small;
+}
