@@ -1,3 +1,10 @@
+/* Fix page width and layout issues */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 .contacts-page {
   background-color: #f0f3f6;
   min-width: 100vw;
@@ -9,6 +16,8 @@
   flex-direction: column;
   align-items: center;
   gap: 30px;           
+  animation: scroll-down 1s ease forwards;
+  animation-delay: 0s;
 }
 
 .quicksand {
@@ -23,17 +32,41 @@
   flex-direction: column; 
   align-items: center;
   gap: 20px;
+  animation: scroll-down 1s ease forwards;
+  animation-delay: 0.2s;
 }
 
 .container h1 {
-  font-weight: 600;
+  font-weight: 700;        
   margin: 0;
   color: #6f8fd0; 
-  font-weight: 700;        
+  animation: scroll-up 1s ease forwards;
+  animation-delay: 0.4s;
 }
 
-.container a{
+.container a {
   color: #000;
+  position: relative;
+  transition: color 0.3s ease;
+}
+
+.container a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -3px;
+  width: 0%;
+  height: 2px;
+  background-color: #6f8fd0;
+  transition: width 0.3s ease;
+}
+
+.container a:hover {
+  color: #6f8fd0;
+}
+
+.container a:hover::after {
+  width: 100%;
 }
 
 .owners-flex {
@@ -47,19 +80,30 @@
   border-radius: 8px;
   box-shadow: 0 10px 25px rgba(0,0,0,0.2);
   gap: 30px;
+  animation: scroll-up 1s ease forwards;
+  animation-delay: 0.6s;
+  overflow: hidden;
 }
 
-.owner-card{
-  background-color:#f0f3f6;
+.owner-card {
+  background-color: #cad8f6;
   border-radius: 8px;
   box-shadow: 0 12px 30px rgba(0,0,0,0.3);
   gap: 20px;
-  color:#6f8fd0 ;
   min-width: 300px;
   text-align: center;
+  transform: scale(1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  animation: scroll-up 1s ease forwards;
+  animation-delay: 0.8s;
 }
 
-.faqs{
+.owner-card:hover {
+  transform: scale(1.05);
+  box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+}
+
+.faqs {
   display: flex;
   flex-direction: column;
   background-color: #cad8f6;
@@ -68,19 +112,31 @@
   gap: 20px;
   border-radius:10px;
   box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  animation: scroll-down 1s ease forwards;
+  animation-delay: 1s;
+  overflow: hidden;
 }
 
-.faqs h2{
+.faqs h2 {
   text-align: center;
+  animation: scroll-up 1s ease forwards;
+  animation-delay: 1.2s;
 }
 
-.faqs div{
+.faqs div {
   background-color: #fcdc90;
   margin: 10px 30px;
   padding: 0px 20px;
   text-align: justify;
   border-radius: 10px;
   box-shadow: 0 12px 30px rgba(0,0,0,0.3);
+  transition: transform 0.3s ease;
+  animation: scroll-up 1s ease forwards;
+  animation-delay: 1.4s;
+}
+
+.faqs div:hover {
+  transform: translateY(-5px);
 }
 
 .query-form {
@@ -90,12 +146,17 @@
   box-shadow: 0 8px 20px rgba(0,0,0,0.15);
   min-width: 40vw;
   margin: 40px auto;
+  animation: scroll-down 1s ease forwards;
+  animation-delay: 1.6s;
+  overflow: hidden;
 }
 
 .query-form h2 {
   font-weight: 700;
   text-align: center;
   font-size: 30px;
+  animation: scroll-up 1s ease forwards;
+  animation-delay: 1.8s;
 }
 
 .query-form form {
@@ -120,6 +181,13 @@
   background-color: #fdc0b6;
   border: none;
   box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  transition: transform 0.2s ease, box-shadow 0.3s ease;
+}
+
+.query-form input:focus,
+.query-form textarea:focus {
+  transform: scale(1.02);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.3);
 }
 
 .query-form button {
@@ -130,11 +198,14 @@
   border-radius: 6px;
   font-size: 16px;
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: background 0.2s ease, transform 0.2s ease;
+  animation: scroll-up 1s ease forwards;
+  animation-delay: 2s;
 }
 
 .query-form button:hover {
   background-color: #cadbf5;
+  transform: translateY(-2px);
 }
 
 .status {
@@ -142,4 +213,29 @@
   text-align: center;
   font-weight: 500;
   font-size: small;
+  animation: scroll-down 1s ease forwards;
+  animation-delay: 2.2s;
+}
+
+/* Keyframes for scroll-up and scroll-down animations */
+@keyframes scroll-down {
+  0% {
+    opacity: 0;
+    transform: translateY(-50px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scroll-up {
+  0% {
+    opacity: 0;
+    transform: translateY(50px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
