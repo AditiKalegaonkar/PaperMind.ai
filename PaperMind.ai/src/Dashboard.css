@@ -1,0 +1,99 @@
+/* Landing page background */
+.Landing-Page {
+    background-image: url('./assets/Background.png');
+    background-repeat: repeat;
+    background-size: auto;
+    min-width: 100vw;
+    min-height: 100vh;
+    position: relative;
+    background-color: rgba(255, 255, 255, 0.3);
+    background-blend-mode: lighten; 
+    display: flex;
+    flex-direction: column;
+}
+
+/* Custom font */
+@font-face {
+    font-family: 'Aprila';
+    src: url('./src/assets/fonts/Aprila-Regular.otf') format('opentype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* Google Quicksand */
+.quicksand {
+    font-family: "Quicksand", sans-serif;
+    font-optical-sizing: auto;
+    font-weight: 400;
+    font-style: normal;
+}
+
+/* Hero container */
+.Hero {
+    margin-top: 70px; /* pushes Hero below navbar */
+    background: #f0f3f6;
+    height: 500px;
+    width: 90vw;
+    margin-left: auto;
+    margin-right: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 16px;
+    animation: scroll-down 1s ease forwards;
+    animation-delay: 0.5s;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    overflow: hidden;
+    text-align: center;
+    padding: 20px;
+}
+
+/* Typing effect for hero title */
+.hero-title {
+    font-size: 70px;
+    font-family: 'Aprila', Arial, sans-serif;
+    color: #2f4ea5;
+    text-shadow: 2px 4px 10px rgba(0,0,0,0.15);
+
+    overflow: hidden;             
+    white-space: nowrap;           
+    border-right: 3px solid #2f4ea5; /* cursor effect */
+    width: 0;                      
+
+    /* typing + blink while typing + cursor fade out */
+    animation: typing 3s steps(30, end) forwards,
+               blink 0.75s step-end 4,
+               cursor-fade 0.5s forwards;
+    animation-delay: 1s, 1s, 4s; 
+}
+
+/* Typing keyframes */
+@keyframes typing {
+    from { width: 0 }
+    to { width: 100% }
+}
+
+/* Cursor blink */
+@keyframes blink {
+    from, to { border-color: transparent }
+    50% { border-color: currentColor; }
+}
+
+/* Cursor fade-out */
+@keyframes cursor-fade {
+    from { border-color: currentColor; }
+    to { border-color: transparent; }
+}
+
+/* Scroll animation for Hero container */
+@keyframes scroll-down {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

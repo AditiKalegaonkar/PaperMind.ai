@@ -51,7 +51,7 @@ nav a:hover {
 }
 
 .Login {
-  background-color: rgb(50, 211, 160);
+  background-color: #607fb7;
   padding: 0.5rem 1rem;
   border-radius: 4px;
   color: white;
@@ -61,5 +61,6 @@ nav a:hover {
 }
 
 .Login:hover{
-    background-color: rgb(104, 207, 159);
+    background-color: #cbdbf5;
+    color: black;
 }
