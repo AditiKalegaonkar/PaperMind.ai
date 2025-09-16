@@ -1,9 +1,9 @@
 import { Routes, Route } from "react-router-dom";
-import Dashboard from "./Dashboard.jsx";
-import About from "./About.jsx";        
-import Contacts from "./Contacts.jsx";  
-import Login from "./Login.jsx"; 
-
+import Dashboard from "./Pages/Dashboard.jsx";
+import About from "./Pages/About.jsx";        
+import Contacts from "./Pages/Contacts.jsx";  
+import Login from "./Pages/Login.jsx"; 
+import Navbar from './Components/Navbar.jsx';
 function App() {
   return (
       <Routes>

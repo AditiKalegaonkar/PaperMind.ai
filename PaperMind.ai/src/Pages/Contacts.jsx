@@ -1,5 +1,5 @@
 import "./Contacts.css";
-import Navbar from "./Navbar";
+import Navbar from '../Components/Navbar';
 import React, { useState } from "react";
 
 export default function Contacts() {
