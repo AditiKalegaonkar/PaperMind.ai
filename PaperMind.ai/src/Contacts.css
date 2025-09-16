@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /* Fix page width and layout issues */
 *,
 *::before,
@@ -5,6 +6,8 @@
   box-sizing: border-box;
 }
 
+=======
+>>>>>>> main
 .contacts-page {
   background-color: #f0f3f6;
   min-width: 100vw;
@@ -16,8 +19,11 @@
   flex-direction: column;
   align-items: center;
   gap: 30px;           
+<<<<<<< HEAD
   animation: scroll-down 1s ease forwards;
   animation-delay: 0s;
+=======
+>>>>>>> main
 }
 
 .quicksand {
@@ -32,6 +38,7 @@
   flex-direction: column; 
   align-items: center;
   gap: 20px;
+<<<<<<< HEAD
   animation: scroll-down 1s ease forwards;
   animation-delay: 0.2s;
 }
@@ -70,11 +77,29 @@
 }
 
 .owners-flex {
+=======
+}
+
+.container h1 {
+  font-weight: 600;
+  margin: 0;
+  color: #6f8fd0; 
+  font-weight: 700;        
+}
+
+.container a{
+  color: #000;
+}
+
+.owners-flex {
+  background-color: #6f8fd0;
+>>>>>>> main
   display: flex;
   color: #000;
   justify-content: space-around;
   align-items: flex-start;
   width: 80vw;
+<<<<<<< HEAD
   padding: 40px;
   gap: 30px;
   animation: scroll-up 1s ease forwards;
@@ -101,6 +126,25 @@
 }
 
 .faqs {
+=======
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  gap: 30px;
+}
+
+.owner-card{
+  background-color:#f0f3f6;
+  border-radius: 8px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.3);
+  gap: 20px;
+  color:#6f8fd0 ;
+  min-width: 300px;
+  text-align: center;
+}
+
+.faqs{
+>>>>>>> main
   display: flex;
   flex-direction: column;
   background-color: #cad8f6;
@@ -109,6 +153,7 @@
   gap: 20px;
   border-radius:10px;
   box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+<<<<<<< HEAD
   animation: scroll-down 1s ease forwards;
   animation-delay: 1s;
   overflow: hidden;
@@ -122,11 +167,22 @@
 
 .faqs div {
   background-color: white;
+=======
+}
+
+.faqs h2{
+  text-align: center;
+}
+
+.faqs div{
+  background-color: #fcdc90;
+>>>>>>> main
   margin: 10px 30px;
   padding: 0px 20px;
   text-align: justify;
   border-radius: 10px;
   box-shadow: 0 12px 30px rgba(0,0,0,0.3);
+<<<<<<< HEAD
   transition: transform 0.3s ease;
   animation: scroll-up 1s ease forwards;
   animation-delay: 1.4s;
@@ -138,22 +194,34 @@
 
 .query-form {
   background: #cad8f6;
+=======
+}
+
+.query-form {
+  background: #adc9f4;
+>>>>>>> main
   padding: 30px;
   border-radius: 10px;
   box-shadow: 0 8px 20px rgba(0,0,0,0.15);
   min-width: 40vw;
   margin: 40px auto;
+<<<<<<< HEAD
   animation: scroll-down 1s ease forwards;
   animation-delay: 1.6s;
   overflow: hidden;
+=======
+>>>>>>> main
 }
 
 .query-form h2 {
   font-weight: 700;
   text-align: center;
   font-size: 30px;
+<<<<<<< HEAD
   animation: scroll-up 1s ease forwards;
   animation-delay: 1.8s;
+=======
+>>>>>>> main
 }
 
 .query-form form {
@@ -175,6 +243,7 @@
   padding: 10px;
   border-radius: 8px;
   min-width: 250px;
+<<<<<<< HEAD
   background-color: white;
   border: none;
   box-shadow: 0 10px 25px rgba(0,0,0,0.2);
@@ -185,6 +254,11 @@
 .query-form textarea:focus {
   transform: scale(1.02);
   box-shadow: 0 12px 28px rgba(0,0,0,0.3);
+=======
+  background-color: #fdc0b6;
+  border: none;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+>>>>>>> main
 }
 
 .query-form button {
@@ -195,14 +269,21 @@
   border-radius: 6px;
   font-size: 16px;
   cursor: pointer;
+<<<<<<< HEAD
   transition: background 0.2s ease, transform 0.2s ease;
   animation: scroll-up 1s ease forwards;
   animation-delay: 2s;
+=======
+  transition: background 0.2s ease;
+>>>>>>> main
 }
 
 .query-form button:hover {
   background-color: #cadbf5;
+<<<<<<< HEAD
   transform: translateY(-2px);
+=======
+>>>>>>> main
 }
 
 .status {
@@ -210,6 +291,7 @@
   text-align: center;
   font-weight: 500;
   font-size: small;
+<<<<<<< HEAD
   animation: scroll-down 1s ease forwards;
   animation-delay: 2.2s;
 }
@@ -236,3 +318,6 @@
     transform: translateY(0);
   }
 }
+=======
+}
+>>>>>>> main

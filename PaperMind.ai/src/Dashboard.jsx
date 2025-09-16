@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { Link } from "react-router-dom";
 import "./Dashboard.css";
 import Navbar from "./Navbar.jsx"; 
@@ -65,8 +66,21 @@ function Dashboard() {
           <li><Link to="/about">About</Link></li>
         </ul>
       </footer>
+=======
+import "./Dashboard.css";
+import Navbar from "./Navbar.jsx"; 
+
+function Dashboard() {
+  return (
+    <div>
+        <Navbar />
+>>>>>>> main
     </div>
   );
 }
 
+<<<<<<< HEAD
 export default Dashboard;
+=======
+export default Dashboard;
+>>>>>>> main
