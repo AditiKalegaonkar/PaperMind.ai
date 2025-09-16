@@ -47,15 +47,11 @@ nav a {
 }
 
 nav a:hover {
-  opacity: 0.7;         /* subtle hover effect */
+  opacity: 0.7;         
 }
 
 .Login {
-<<<<<<< HEAD
   background-color: #607fb7;
-=======
-  background-color: rgb(50, 211, 160);
->>>>>>> main
   padding: 0.5rem 1rem;
   border-radius: 4px;
   color: white;
@@ -65,10 +61,7 @@ nav a:hover {
 }
 
 .Login:hover{
-<<<<<<< HEAD
     background-color: #cbdbf5;
     color: black;
-=======
     background-color: rgb(104, 207, 159);
->>>>>>> main
 }

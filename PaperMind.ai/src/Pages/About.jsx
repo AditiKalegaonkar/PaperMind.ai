@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from "react";
 import "./About.css";
 import { Typewriter } from "react-simple-typewriter";
-import Navbar from './Components/Navbar.jsx'; 
-import Mascot from "./assets/turtle-3.png";
-import Codesnip from "./assets/Code Snippet.png";
-import Dashboardsnip from "./assets/Dashboard snippet.jpg";
-import legal from "./assets/legaldocs.png";
-import edu from "./assets/edudoc.png";
-import finance from "./assets/financialdocs.png";
-import other from "./assets/other.png";
+import Navbar from '../Components/Navbar'; 
+import Mascot from "../assets/turtle-3.png";
+import Codesnip from "../assets/Code Snippet.png";
+import Dashboardsnip from "../assets/Dashboard snippet.jpg";
+import legal from "../assets/legaldocs.png";
+import edu from "../assets/edudoc.png";
+import finance from "../assets/financialdocs.png";
+import other from "../assets/other.png";
 
 function About() {
   const [done, setDone] = useState(false);
