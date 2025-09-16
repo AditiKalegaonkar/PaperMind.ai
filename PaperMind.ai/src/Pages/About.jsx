@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "./About.css";
 import { Typewriter } from "react-simple-typewriter";
-import Navbar from "./Navbar.jsx";
+import Navbar from './Components/Navbar.jsx'; 
 import Mascot from "./assets/turtle-3.png";
 import Codesnip from "./assets/Code Snippet.png";
 import Dashboardsnip from "./assets/Dashboard snippet.jpg";
