@@ -3,7 +3,6 @@ import Dashboard from "./Pages/Dashboard.jsx";
 import About from "./Pages/About.jsx";        
 import Contacts from "./Pages/Contacts.jsx";  
 import Login from "./Pages/Login.jsx"; 
-import Navbar from './Components/Navbar.jsx';
 import SignUp from "./Pages/SignUp.jsx";
 function App() {
   return (

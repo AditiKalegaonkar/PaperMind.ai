@@ -1,12 +1,8 @@
 .Landing-Page {
-  background-image: url('../assets/Background.png');
-  background-repeat: no-repeat;
-  background-size: cover;
   width: 100%;
   min-height: 100vh;
   position: relative;
-  background-color: rgba(255, 255, 255, 0.3);
-  background-blend-mode: lighten;
+  background-color: #f0f3f6;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
