@@ -4,6 +4,7 @@ import About from "./Pages/About.jsx";
 import Contacts from "./Pages/Contacts.jsx";  
 import Login from "./Pages/Login.jsx"; 
 import Navbar from './Components/Navbar.jsx';
+import SignUp from "./Pages/SignUp.jsx";
 function App() {
   return (
       <Routes>
@@ -11,6 +12,7 @@ function App() {
         <Route path="/about" element={<About />} />
         <Route path="/contacts" element={<Contacts />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<SignUp />} />
       </Routes>
   );
 }

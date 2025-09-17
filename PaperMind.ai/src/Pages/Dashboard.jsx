@@ -9,18 +9,23 @@ function Dashboard() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Redirect after submitting
     window.location.href = "/login";
   };
 
+  const agents = [
+    { title: "Legal", description: "Get expert legal guidance and document support.", mascot: "/src/assets/legaldocs.png" },
+    { title: "Education", description: "Educational insights and tutoring assistance.", mascot: "/src/assets/edudoc.png" },
+    { title: "Financial", description: "Financial advice, budgeting, and investment tips.", mascot: "/src/assets/financialdocs.png" },
+    { title: "Other", description: "General-purpose support for all your needs.", mascot: "/src/assets/financialdocs.png" },
+  ];
+
   return (
-    <div className="Landing-Page">
+    <div className="Landing-Page quicksand">
       <Navbar />
-      <div className="Hero quicksand">
+
+      <div className="Hero">
         <div className="Mascot">
-          <img 
-            src="/src/assets/turtle-4.png" 
-            alt="Papermind AI Mascot" />
+          <img src="/src/assets/turtle-4.png" alt="Papermind AI Mascot" className="hero-mascot"/>
           <p className="speech">Hey! I'm Tory — your smart guide to mastering any document!</p>
         </div>
         <div className="hero-text">
@@ -34,7 +39,22 @@ function Dashboard() {
           Discover the future of productivity with <strong>PaperMind.ai</strong> – your intelligent assistant that turns ideas into actionable insights. Save time, stay organized, and make smarter decisions with cutting-edge AI designed to understand your needs. Experience innovation that works as hard as you do!
         </p>
 
-        {/* Chat Container below the information text */}
+        <div className="agent-cards-wrapper">
+          {agents.map((agent, index) => (
+            <div key={index} className="agent-card">
+              <div className="agent-card-inner">
+                <div className="card-front">
+                  <img src={agent.mascot} alt={agent.title} className="card-mascot"/>
+                  <h3>{agent.title}</h3>
+                </div>
+                <div className="card-back">
+                  <p>{agent.description}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
         <div className="chat-wrapper">
           <div className="chat-container">
             <input
@@ -65,13 +85,6 @@ function Dashboard() {
           <li><Link to="/about">About</Link></li>
         </ul>
       </footer>
-import "./Dashboard.css";
-import Navbar from "./Navbar.jsx"; 
-
-function Dashboard() {
-  return (
-    <div>
-        <Navbar />
     </div>
   );
 }

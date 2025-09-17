@@ -1,0 +1,121 @@
+/* === Main Area with Background === */
+.main {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100vw;
+  height: 100vh;
+  /* Background image */
+  background-image: url('../assets/Background.png');
+  background-size: cover;
+  background-color: rgba(255, 255, 255, 0.3);
+  background-blend-mode: lighten;
+
+  /* Optional for better centering and layout */
+  flex-direction: column;
+  box-sizing: border-box;
+  justify-content: center;
+  align-items: center;
+}
+
+/* === Login Card === */
+.Login-card {
+  background: #cad8f6;
+  height: 550px;
+  width: 425px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 20px;
+  color: #111827;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+.login-card .small-text {
+  color: #444444;
+  font-size: 11px;
+}
+
+input {
+  padding: 10px;
+  width: 250px;
+  margin: 10px 0;
+  border-radius: 8px;
+  border: 1px solid #E5E7EB;
+  background-color: #FFFFFF;
+}
+
+.password {
+  position: relative;
+}
+
+.password span {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.login-options {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  width: 250px;
+  margin: 10px 0;
+  font-size: 11px;
+}
+
+/* Button */
+.login-button {
+  background-color: #6e8fd2;
+  color: #ffffff;
+  padding: 10px;
+  margin: 20px 0;
+  width: 270px;
+  border-radius: 8px;
+  border: 1px solid #4A7DFF;
+  cursor: pointer;
+}
+
+.login-button:hover {
+  background-color: #5b7bc5;
+}
+
+/* Divider */
+.login-divider {
+  display: flex;
+  flex-direction: row;
+  width: 250px;
+  height: 10px;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* SSO Buttons */
+.sso-buttons {
+  display: flex;
+  width: 250px;
+  height: 30px;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  margin: 10px 0px;
+  padding: 10px;
+}
+
+.sso {
+  background-color: white;
+  width: 80rem;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sso img {
+  height: 15px;
+  width: 15px;
+}

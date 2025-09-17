@@ -1,63 +1,47 @@
-<<<<<<< HEAD
-/* Fix page width and layout issues */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-=======
->>>>>>> main
 .contacts-page {
   background-color: #f0f3f6;
   min-width: 100vw;
-  min-height: 100vh;   
-  margin: 0;
-  color: #000;
-  padding: 100px 20px 40px;
+  min-height: 100vh;
+  margin: 80px auto 40px;
+  padding: 0 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 30px;           
-<<<<<<< HEAD
-  animation: scroll-down 1s ease forwards;
-  animation-delay: 0s;
-=======
->>>>>>> main
+  gap: 40px;
+  box-sizing: border-box;
 }
 
-.quicksand {
+.contacts-page .quicksand {
   font-family: "Quicksand", sans-serif;
   font-optical-sizing: auto;
   font-weight: 400;
   font-style: normal;
 }
 
-.container {
+.contacts-page .container {
   display: flex;
-  flex-direction: column; 
+  flex-direction: column;
   align-items: center;
   gap: 20px;
-<<<<<<< HEAD
-  animation: scroll-down 1s ease forwards;
-  animation-delay: 0.2s;
+  max-width: 1200px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.container h1 {
-  font-weight: 700;        
+.contacts-page .container h1 {
+  font-weight: 700;
   margin: 0;
-  color: #6f8fd0; 
-  animation: scroll-up 1s ease forwards;
-  animation-delay: 0.4s;
+  color: #6f8fd0;
+  text-align: center;
 }
 
-.container a {
+.contacts-page .container a {
   color: #000;
   position: relative;
   transition: color 0.3s ease;
 }
 
-.container a::after {
+.contacts-page .container a::after {
   content: "";
   position: absolute;
   left: 0;
@@ -68,169 +52,97 @@
   transition: width 0.3s ease;
 }
 
-.container a:hover {
+.contacts-page .container a:hover {
   color: #6f8fd0;
 }
 
-.container a:hover::after {
+.contacts-page .container a:hover::after {
   width: 100%;
 }
 
-.owners-flex {
-=======
-}
-
-.container h1 {
-  font-weight: 600;
-  margin: 0;
-  color: #6f8fd0; 
-  font-weight: 700;        
-}
-
-.container a{
-  color: #000;
-}
-
-.owners-flex {
-  background-color: #6f8fd0;
->>>>>>> main
+.contacts-page .owners-flex {
   display: flex;
-  color: #000;
-  justify-content: space-around;
-  align-items: flex-start;
-  width: 80vw;
-<<<<<<< HEAD
-  padding: 40px;
+  justify-content: center;
+  flex-wrap: wrap;
   gap: 30px;
-  animation: scroll-up 1s ease forwards;
-  animation-delay: 0.6s;
-  overflow: hidden;
+  width: 100%;
+  max-width: 1000px;
 }
 
-.owner-card {
-  background-color: #cad8f6;
-  border-radius: 8px;
-  box-shadow: 0 12px 30px rgba(0,0,0,0.3);
-  gap: 20px;
-  min-width: 300px;
-  text-align: center;
-  transform: scale(1);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  animation: scroll-up 1s ease forwards;
-  animation-delay: 0.8s;
-}
-
-.owner-card:hover {
-  transform: scale(1.05);
-  box-shadow: 0 15px 35px rgba(0,0,0,0.4);
-}
-
-.faqs {
-=======
-  padding: 30px;
-  border-radius: 8px;
+.contacts-page .owner-card {
+  background-color: #f0f3f6;
+  border-radius: 12px;
   box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-  gap: 30px;
-}
-
-.owner-card{
-  background-color:#f0f3f6;
-  border-radius: 8px;
-  box-shadow: 0 12px 30px rgba(0,0,0,0.3);
-  gap: 20px;
-  color:#6f8fd0 ;
-  min-width: 300px;
+  padding: 20px;
+  width: 250px;
   text-align: center;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-.faqs{
->>>>>>> main
+.contacts-page .owner-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 35px rgba(0,0,0,0.35);
+}
+
+.contacts-page .faqs {
   display: flex;
   flex-direction: column;
   background-color: #cad8f6;
-  min-width: 80vw;
-  height: 550px;
+  width: 100%;
+  max-width: 1000px;
+  min-height: 500px;
   gap: 20px;
-  border-radius:10px;
+  border-radius: 12px;
+  padding: 20px;
   box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-<<<<<<< HEAD
-  animation: scroll-down 1s ease forwards;
-  animation-delay: 1s;
-  overflow: hidden;
 }
 
-.faqs h2 {
+.contacts-page .faqs h2 {
   text-align: center;
-  animation: scroll-up 1s ease forwards;
-  animation-delay: 1.2s;
+  margin-bottom: 10px;
+  color: #2f4ea5;
 }
 
-.faqs div {
-  background-color: white;
-=======
-}
-
-.faqs h2{
-  text-align: center;
-}
-
-.faqs div{
+.contacts-page .faqs div {
   background-color: #fcdc90;
->>>>>>> main
-  margin: 10px 30px;
-  padding: 0px 20px;
+  margin: 10px 0;
+  padding: 15px 20px;
   text-align: justify;
   border-radius: 10px;
-  box-shadow: 0 12px 30px rgba(0,0,0,0.3);
-<<<<<<< HEAD
+  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
   transition: transform 0.3s ease;
-  animation: scroll-up 1s ease forwards;
-  animation-delay: 1.4s;
 }
 
-.faqs div:hover {
+.contacts-page .faqs div:hover {
   transform: translateY(-5px);
 }
 
-.query-form {
-  background: #cad8f6;
-=======
-}
-
-.query-form {
-  background: #adc9f4;
->>>>>>> main
+.contacts-page .query-form {
+  background-color: #adc9f4;
   padding: 30px;
-  border-radius: 10px;
+  border-radius: 12px;
   box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-  min-width: 40vw;
-  margin: 40px auto;
-<<<<<<< HEAD
-  animation: scroll-down 1s ease forwards;
-  animation-delay: 1.6s;
-  overflow: hidden;
-=======
->>>>>>> main
+  width: 100%;
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-sizing: border-box;
 }
 
-.query-form h2 {
+.contacts-page .query-form h2 {
   font-weight: 700;
   text-align: center;
-  font-size: 30px;
-<<<<<<< HEAD
-  animation: scroll-up 1s ease forwards;
-  animation-delay: 1.8s;
-=======
->>>>>>> main
+  font-size: 28px;
 }
 
-.query-form form {
+.contacts-page .query-form form {
   display: flex;
   flex-direction: column;
   gap: 15px;
 }
 
-.query-form label {
+.contacts-page .query-form label {
   display: flex;
   flex-direction: column;
   font-weight: 600;
@@ -238,86 +150,48 @@
   gap: 10px;
 }
 
-.query-form input,
-.query-form textarea {
+.contacts-page .query-form input,
+.contacts-page .query-form textarea {
   padding: 10px;
   border-radius: 8px;
-  min-width: 250px;
-<<<<<<< HEAD
-  background-color: white;
+  width: 100%;
   border: none;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-  transition: transform 0.2s ease, box-shadow 0.3s ease;
+  box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+  background-color: #fff;
+  resize: none;
+  font-size: 14px;
 }
 
-.query-form input:focus,
-.query-form textarea:focus {
-  transform: scale(1.02);
-  box-shadow: 0 12px 28px rgba(0,0,0,0.3);
-=======
-  background-color: #fdc0b6;
-  border: none;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
->>>>>>> main
-}
-
-.query-form button {
+.contacts-page .query-form button {
   background-color: #6f8fd0;
   color: white;
   border: none;
   padding: 12px;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 16px;
   cursor: pointer;
-<<<<<<< HEAD
   transition: background 0.2s ease, transform 0.2s ease;
-  animation: scroll-up 1s ease forwards;
-  animation-delay: 2s;
-=======
-  transition: background 0.2s ease;
->>>>>>> main
 }
 
-.query-form button:hover {
-  background-color: #cadbf5;
-<<<<<<< HEAD
+.contacts-page .query-form button:hover {
+  background-color: #5a73b0;
   transform: translateY(-2px);
-=======
->>>>>>> main
 }
 
-.status {
+.contacts-page .status {
   margin-top: 15px;
   text-align: center;
   font-weight: 500;
-  font-size: small;
-<<<<<<< HEAD
-  animation: scroll-down 1s ease forwards;
-  animation-delay: 2.2s;
+  font-size: 0.9rem;
+  color: #333;
 }
 
-/* Keyframes for scroll-up and scroll-down animations */
 @keyframes scroll-down {
-  0% {
-    opacity: 0;
-    transform: translateY(-50px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  0% { opacity: 0; transform: translateY(-50px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes scroll-up {
-  0% {
-    opacity: 0;
-    transform: translateY(50px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  0% { opacity: 0; transform: translateY(50px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
-=======
-}
->>>>>>> main
