@@ -42,12 +42,14 @@ function Dashboard() {
         <div className="agent-cards-wrapper">
           {agents.map((agent, index) => (
             <div key={index} className="agent-card">
-              <div className="card-front">
-                <img src={agent.mascot} alt={agent.title} className="card-mascot"/>
-                <h3>{agent.title}</h3>
-              </div>
-              <div className="card-back">
-                <p>{agent.description}</p>
+              <div className="agent-card-inner">
+                <div className="card-front">
+                  <img src={agent.mascot} alt={agent.title} className="card-mascot"/>
+                  <h3>{agent.title}</h3>
+                </div>
+                <div className="card-back">
+                  <p>{agent.description}</p>
+                </div>
               </div>
             </div>
           ))}

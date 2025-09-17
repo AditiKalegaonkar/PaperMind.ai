@@ -30,9 +30,9 @@
 
 .Hero {
   margin: 80px 10px 10px 10px;
-  padding:20px;
+  padding: 20px;
   background: #fff;
-  height: 450px; /* Increased height for spacing */
+  height: 450px;
   width: 90%;
   display: grid;
   grid-template-columns: 1fr 2.5fr;
@@ -54,6 +54,7 @@
   text-align: center;
 }
 
+/* === HERO TITLE WITH TYPING + TEMP UNDERSCORE CURSOR === */
 .hero-title {
   font-size: 6vw;
   margin: 0;
@@ -62,12 +63,32 @@
   text-shadow: 0.2vw 0.4vw 1vw rgba(0,0,0,0.15);
   overflow: hidden;
   white-space: nowrap;
-  border-right: 0.3vw solid #2f4ea5;
   width: 0;
-  animation: typing 3s steps(30, end) forwards,
-             blink 0.75s step-end 4,
-             cursor-fade 0.5s forwards;
-  animation-delay: 1s, 1s, 4s;
+  display: inline-block;
+  animation: typing 3s steps(30, end) forwards;
+  position: relative;
+}
+
+.hero-title::after {
+  content: "_";
+  position: absolute;
+  right: -1vw;
+  bottom: 0;
+  color: #2f4ea5;
+  animation: blink-underscore 0.6s, hide-cursor 0s forwards 3s;
+}
+
+@keyframes typing {
+  from { width: 0 }
+  to { width: 75% }
+}
+
+@keyframes hide-cursor {
+  to { opacity: 0; }
+}
+
+@keyframes blink-underscore {
+  50% { opacity: 0; }
 }
 
 .subtitle {
@@ -86,7 +107,7 @@
 
 .hero-mascot {
   width: 300px;
-  height:400px;
+  height: 400px;
   margin-bottom: 10px;
   animation: float 4s ease-in-out infinite;
 }
@@ -127,10 +148,11 @@
   justify-content: space-around;
   flex-wrap: wrap;
   gap: 2vw;
-  margin: 60px 0; /* Pushed below Hero */
+  margin: 60px 0;
   width: 100%;
 }
 
+/* === FLASHCARDS TURN IN PLACE === */
 .agent-card {
   width: 200px;
   height: 180px;
@@ -140,7 +162,21 @@
   animation: fadeUp 0.8s ease forwards;
 }
 
-.agent-card div {
+.agent-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.8s ease;
+  transform-style: preserve-3d;
+}
+
+.agent-card:hover .agent-card-inner {
+  transform: rotateY(180deg);
+}
+
+.card-front,
+.card-back {
+  position: absolute;
   width: 100%;
   height: 100%;
   border-radius: 12px;
@@ -150,7 +186,6 @@
   align-items: center;
   backface-visibility: hidden;
   box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-  transition: transform 0.6s ease, box-shadow 0.3s ease;
 }
 
 .card-front {
@@ -169,14 +204,6 @@
   text-align: center;
 }
 
-.agent-card:hover .card-front {
-  transform: rotateY(180deg);
-}
-
-.agent-card:hover .card-back {
-  transform: rotateY(0deg);
-}
-
 .card-mascot {
   width: 50px;
   height: 50px;
@@ -184,10 +211,11 @@
   animation: float 3s ease-in-out infinite;
 }
 
+/* === CHAT SECTION === */
 .chat-wrapper {
   display: flex;
   gap: 0.8vw;
-  margin-top: 40px; /* Space below flashcards */
+  margin-top: 40px;
   justify-content: center;
   align-items: center;
   flex-wrap: wrap;
@@ -196,17 +224,25 @@
   box-sizing: border-box;
 }
 
+/* === CHAT CONTAINER WITH GRADIENT BORDER === */
 .chat-container {
   display: flex;
   align-items: center;
-  background-color: #cad8f6;
   border-radius: 3vw;
   padding: 0.8vw 1vw;
   flex: 1;
-  min-width: 200px;
-  max-width: 350px;
+  min-width: 350px;
+  max-width: 450px;
+  height: 60px;
+  position: relative;
   box-shadow: 0 0.5vw 1.5vw rgba(0,0,0,0.15);
   box-sizing: border-box;
+
+  border: 3px solid transparent;
+  background-clip: padding-box, border-box;
+  background-origin: border-box;
+  background-image: linear-gradient(white, white),
+    linear-gradient(135deg, #6f8fd0, #cad8f6, #2f4ea5);
 }
 
 .file-button {
@@ -232,7 +268,7 @@
 .chat-container input[type="text"] {
   flex: 1;
   padding: 0.6vw 0.8vw;
-  border: 0.2vw solid #6f8fd0;
+  border: none;
   border-radius: 3vw;
   font-size: 1vw;
   color: #000;
@@ -292,9 +328,18 @@
   padding: 0;
 }
 
-@keyframes typing { from { width: 0 } to { width: 100% } }
-@keyframes blink { from, to { border-color: transparent } 50% { border-color: currentColor; } }
-@keyframes cursor-fade { from { border-color: currentColor; } to { border-color: transparent; } }
-@keyframes scroll-down { from { opacity: 0; transform: translateY(-3vh); } to { opacity: 1; transform: translateY(0); } }
-@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-@keyframes fadeUp { 0% { opacity: 0; transform: translateY(20px); } 100% { opacity: 1; transform: translateY(0); } }
+/* === ANIMATIONS === */
+@keyframes scroll-down {
+  from { opacity: 0; transform: translateY(-3vh); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes fadeUp {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
