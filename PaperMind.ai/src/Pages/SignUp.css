@@ -1,0 +1,124 @@
+/* === Main Area for Sign Up with Background === */
+.main {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100vw;
+  height: 100vh;
+
+  background-image: url('../assets/Background.png');
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-color: rgba(255, 255, 255, 0.3);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+/* === Sign Up Card === */
+.signup-box {
+  background: #cad8f6; /* Changed from #fcc0b6 */
+  height: 500px;
+  width: 425px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 20px;
+  color: #000;
+
+  /* Optional shadow to make it pop */
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+.signup-heading {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  text-align: center;
+}
+
+.small-text {
+  color: #6b7280;
+  font-size: 11px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+/* === Inputs === */
+.signup-input,
+.phone-input input {
+  height: 40px;
+  padding: 0 12px;
+  margin: 8px 0;
+  width: 300px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background-color: #fff;
+  font-size: 14px;
+  color: #000;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.signup-input::placeholder,
+.phone-input input::placeholder {
+  color: #6b7280;
+}
+
+.signup-input:focus,
+.phone-input input:focus {
+  border-color: #4A7DFF;
+}
+
+.allips {
+  display: flex;
+  flex-direction: column;
+  width: 300px;
+  align-items: center;
+  justify-content: center;
+}
+
+.toggle-password {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+/* === Button === */
+.signup-button {
+  background-color: #4A7DFF;
+  color: white;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 12px;
+  margin-top: 18px;
+  width: 270px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: none;
+}
+
+.signup-button:hover {
+  background-color: #3a6ae6;
+}
+
+/* === Login Text === */
+.signup-login {
+  margin-top: 18px;
+  font-size: 13px;
+  color: #444;
+  text-align: center;
+}
+
+.signup-link {
+  color: #4A7DFF;
+  font-size: 11px;
+  cursor: pointer;
+  font-weight: 500;
+  margin-left: 4px;
+}
