@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import axios from "axios";
 import "./Login.css";
+import Googlelogo from "../assets/google-logo.png"
 import { Link, useNavigate } from "react-router-dom";
 
 const Login = () => {
@@ -77,7 +78,7 @@ const Login = () => {
           </div>
           <div className="sso-buttons">
             <button className="sso" onClick={() => window.location.href = "http://localhost:5000/auth/google"}>
-              <img src="../assets/google-logo.png" alt="Google logo" style={{height : "20px", width : "20px"}}/>
+              <img src={Googlelogo} alt="Google logo" style={{height : "20px", width : "20px"}}/>
             </button>
           </div>
           <div style={{ display: "flex", justifyContent: "center", fontSize: "11px", marginTop: "10px" }}>
