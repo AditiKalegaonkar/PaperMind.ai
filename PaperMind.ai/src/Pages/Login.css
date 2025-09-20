@@ -5,22 +5,18 @@
   align-items: center;
   width: 100vw;
   height: 100vh;
-  /* Background image */
   background-image: url('../assets/Background.png');
   background-size: cover;
-  background-color: rgba(255, 255, 255, 0.3);
+  background-color: rgba(245, 246, 255, 0.7);
   background-blend-mode: lighten;
-
-  /* Optional for better centering and layout */
   flex-direction: column;
   box-sizing: border-box;
-  justify-content: center;
-  align-items: center;
 }
 
 /* === Login Card === */
 .Login-card {
-  background: #cad8f6;
+  /* Card background changed to white */
+  background: #ffffff;
   height: 550px;
   width: 425px;
   display: flex;
@@ -28,12 +24,20 @@
   align-items: center;
   justify-content: center;
   border-radius: 20px;
-  color: #111827;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  /* Default text color changed to indigo */
+  color: #525fe1;
+  box-shadow: 0 8px 20px rgba(82, 95, 225, 0.2);
+  border: 1px solid #dee2e6;
+}
+
+/* To make a title orange, you could add a class like this to your <h2> or <h1> tag */
+.card-title {
+    color: #f86f03;
 }
 
 .login-card .small-text {
-  color: #444444;
+  /* Text color changed to indigo */
+  color: #525fe1;
   font-size: 11px;
 }
 
@@ -42,8 +46,10 @@ input {
   width: 250px;
   margin: 10px 0;
   border-radius: 8px;
-  border: 1px solid #E5E7EB;
-  background-color: #FFFFFF;
+  border: 1px solid #525fe1;
+  background-color: #f5f6ff;
+  /* Text color for input field */
+  color: #525fe1;
 }
 
 .password {
@@ -56,6 +62,8 @@ input {
   top: 50%;
   transform: translateY(-50%);
   cursor: pointer;
+  /* Icon color changed to indigo */
+  color: #525fe1;
 }
 
 .login-options {
@@ -66,22 +74,27 @@ input {
   width: 250px;
   margin: 10px 0;
   font-size: 11px;
+  /* Text color changed to indigo */
+  color: #525fe1;
 }
 
 /* Button */
 .login-button {
-  background-color: #6e8fd2;
+  /* "Special" button background changed to orange */
+  background-color: #525fe1;
   color: #ffffff;
   padding: 10px;
   margin: 20px 0;
   width: 270px;
   border-radius: 8px;
-  border: 1px solid #4A7DFF;
+  border: none;
   cursor: pointer;
+  transition: background-color 0.3s ease; /* Added transition for smooth hover */
 }
 
 .login-button:hover {
-  background-color: #5b7bc5;
+  /* Hover changes to indigo */
+  background-color: #f86f03;
 }
 
 /* Divider */
@@ -92,6 +105,8 @@ input {
   height: 10px;
   justify-content: space-between;
   align-items: center;
+  /* Using a light indigo shade for the divider */
+  color: black;
 }
 
 /* SSO Buttons */
@@ -104,15 +119,18 @@ input {
   align-items: center;
   margin: 10px 0px;
   padding: 10px;
+  gap: 15px;
 }
 
 .sso {
-  background-color: white;
-  width: 80rem;
+  background-color: #ffffff;
+  width: 100%;
   border-radius: 8px;
+  border: 2px solid #525fe1;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 8px;
 }
 
 .sso img {

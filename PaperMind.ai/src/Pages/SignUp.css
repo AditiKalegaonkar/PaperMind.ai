@@ -5,11 +5,10 @@
   align-items: center;
   width: 100vw;
   height: 100vh;
-
   background-image: url('../assets/Background.png');
   background-repeat: no-repeat;
   background-size: cover;
-  background-color: rgba(255, 255, 255, 0.3);
+  background-color: rgba(245, 246, 255, 0.7);
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -19,7 +18,7 @@
 
 /* === Sign Up Card === */
 .signup-box {
-  background: #cad8f6; /* Changed from #fcc0b6 */
+  background: #ffffff;
   height: 500px;
   width: 425px;
   display: flex;
@@ -27,10 +26,9 @@
   align-items: center;
   justify-content: center;
   border-radius: 20px;
-  color: #000;
-
-  /* Optional shadow to make it pop */
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  color: #525fe1; /* Default text color set to indigo */
+  box-shadow: 0 8px 20px rgba(82, 95, 225, 0.2); /* Indigo-based shadow */
+  border: 1px solid #dee2e6;
 }
 
 .signup-heading {
@@ -38,10 +36,11 @@
   font-weight: 700;
   margin-bottom: 6px;
   text-align: center;
+  color: #f86f03; /* Special title color set to orange */
 }
 
 .small-text {
-  color: #6b7280;
+  color: #525fe1; /* Text color set to indigo */
   font-size: 11px;
   margin-bottom: 20px;
   text-align: center;
@@ -55,22 +54,22 @@
   margin: 8px 0;
   width: 300px;
   border-radius: 8px;
-  border: 1px solid #d1d5db;
-  background-color: #fff;
+  border: 1px solid #525fe1; /* Border color set to indigo */
+  background-color: #f5f6ff; /* Background color for inputs */
   font-size: 14px;
-  color: #000;
+  color: #525fe1; /* Text color set to indigo */
   outline: none;
   box-sizing: border-box;
 }
 
 .signup-input::placeholder,
 .phone-input input::placeholder {
-  color: #6b7280;
+  color: #b3baff; /* Lighter indigo shade for placeholder */
 }
 
 .signup-input:focus,
 .phone-input input:focus {
-  border-color: #4A7DFF;
+  border-color: #f86f03; /* Orange border on focus */
 }
 
 .allips {
@@ -87,11 +86,12 @@
   top: 50%;
   transform: translateY(-50%);
   cursor: pointer;
+  color: #525fe1; /* Icon color set to indigo */
 }
 
 /* === Button === */
 .signup-button {
-  background-color: #4A7DFF;
+  background-color: #525fe1; /* Background color set to indigo */
   color: white;
   font-size: 15px;
   font-weight: 600;
@@ -101,22 +101,23 @@
   border-radius: 8px;
   cursor: pointer;
   border: none;
+  transition: background-color 0.3s ease;
 }
 
 .signup-button:hover {
-  background-color: #3a6ae6;
+  background-color: #f86f03; /* Orange background on hover */
 }
 
 /* === Login Text === */
 .signup-login {
   margin-top: 18px;
   font-size: 13px;
-  color: #444;
+  color: #525fe1; /* Text color set to indigo */
   text-align: center;
 }
 
 .signup-link {
-  color: #4A7DFF;
+  color: #f86f03; /* Link color set to orange */
   font-size: 11px;
   cursor: pointer;
   font-weight: 500;

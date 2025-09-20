@@ -1,9 +1,10 @@
 .contacts-page {
-  background-color: #f0f3f6;
-  min-width: 100vw;
+  background-color: #FFFFFF; /* Pure White */
+  color: #525FE1; /* Indigo */
+  width: 100vw;
   min-height: 100vh;
-  margin: 80px auto 40px;
-  padding: 0 20px;
+  margin-top: 80px;
+  padding: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -31,13 +32,16 @@
 .contacts-page .container h1 {
   font-weight: 700;
   margin: 0;
-  color: #6f8fd0;
+  color: #F86F03; /* Red-Orange */
   text-align: center;
+  font-size: clamp(2.5rem, 5vw, 3.5rem);
 }
 
 .contacts-page .container a {
-  color: #000;
+  color: #525FE1; /* Indigo */
   position: relative;
+  text-decoration: none;
+  font-weight: 600;
   transition: color 0.3s ease;
 }
 
@@ -48,12 +52,12 @@
   bottom: -3px;
   width: 0%;
   height: 2px;
-  background-color: #6f8fd0;
+  background-color: #FFA41B; /* Golden Orange */
   transition: width 0.3s ease;
 }
 
 .contacts-page .container a:hover {
-  color: #6f8fd0;
+  color: #FFA41B; /* Golden Orange */
 }
 
 .contacts-page .container a:hover::after {
@@ -70,10 +74,12 @@
 }
 
 .contacts-page .owner-card {
-  background-color: #f0f3f6;
+  background-color: #525FE1; /* Indigo background */
+  color: #FFFFFF; /* White text */
+  border: none;
   border-radius: 12px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-  padding: 20px;
+  box-shadow: 0 10px 25px rgba(82, 95, 225, 0.2); 
+  padding: 25px;
   width: 250px;
   text-align: center;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
@@ -81,47 +87,64 @@
 
 .contacts-page .owner-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 15px 35px rgba(0,0,0,0.35);
+  box-shadow: 0 15px 35px rgba(82, 95, 225, 0.3);
 }
 
+.contacts-page .owner-card a {
+    color: #FFFFFF;
+}
+
+.contacts-page .owner-card a:hover {
+    color: #FFA41B;
+}
+
+/* Updated for single-page feel */
 .contacts-page .faqs {
   display: flex;
   flex-direction: column;
-  background-color: #cad8f6;
+  background-color: transparent;
   width: 100%;
   max-width: 1000px;
   min-height: 500px;
   gap: 20px;
-  border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  box-shadow: none;
 }
 
 .contacts-page .faqs h2 {
   text-align: center;
   margin-bottom: 10px;
-  color: #2f4ea5;
+  color: #525FE1; /* Indigo */
 }
 
 .contacts-page .faqs div {
-  background-color: #fcdc90;
+  background-color: #525FE1; /* Indigo background */
+  color: #FFFFFF; /* White text */
+  border: none;
   margin: 10px 0;
-  padding: 15px 20px;
+  padding: 20px 25px;
   text-align: justify;
   border-radius: 10px;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-  transition: transform 0.3s ease;
+  box-shadow: 0 8px 20px rgba(82, 95, 225, 0.2);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .contacts-page .faqs div:hover {
   transform: translateY(-5px);
+  box-shadow: 0 12px 28px rgba(82, 95, 225, 0.3);
+}
+
+.contacts-page .faqs div h4 {
+    color: #FFFFFF;
+    font-size: 1.1rem;
 }
 
 .contacts-page .query-form {
-  background-color: #adc9f4;
-  padding: 30px;
+  background-color: #525FE1; /* Indigo background */
+  color: #FFFFFF; /* White text */
+  padding: 40px;
   border-radius: 12px;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+  box-shadow: 0 8px 20px rgba(82, 95, 225, 0.2);
   width: 100%;
   max-width: 600px;
   display: flex;
@@ -134,56 +157,70 @@
   font-weight: 700;
   text-align: center;
   font-size: 28px;
+  color: #FFFFFF;
 }
 
 .contacts-page .query-form form {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 20px;
 }
 
 .contacts-page .query-form label {
   display: flex;
   flex-direction: column;
   font-weight: 600;
-  color: #333;
+  color: #FFFFFF;
   gap: 10px;
 }
 
 .contacts-page .query-form input,
 .contacts-page .query-form textarea {
-  padding: 10px;
+  padding: 12px;
   border-radius: 8px;
   width: 100%;
-  border: none;
-  box-shadow: 0 6px 15px rgba(0,0,0,0.1);
-  background-color: #fff;
+  border: 2px solid #525FE1;
+  box-shadow: none;
+  background-color: #FFFFFF;
   resize: none;
-  font-size: 14px;
+  font-size: 16px;
+  color: #525FE1;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.contacts-page .query-form input:focus,
+.contacts-page .query-form textarea:focus {
+  outline: none;
+  border-color: #FFA41B; /* Golden Orange */
+  box-shadow: 0 0 10px rgba(255, 164, 27, 0.5);
 }
 
 .contacts-page .query-form button {
-  background-color: #6f8fd0;
-  color: white;
+  background-color: #F86F03; /* Red-Orange */
+  color: #FFFFFF;
   border: none;
-  padding: 12px;
+  padding: 15px;
   border-radius: 8px;
-  font-size: 16px;
-  cursor: pointer;
-  transition: background 0.2s ease, transform 0.2s ease;
+  font-size: 18px;
+  font-weight: 600;
+  width: 100%;
+  transition: background-color 0.2s ease, transform 0.2s ease;
 }
 
 .contacts-page .query-form button:hover {
-  background-color: #5a73b0;
-  transform: translateY(-2px);
+  background-color: #FFA41B; /* Golden Orange */
+  transform: translateY(-3px);
 }
 
 .contacts-page .status {
   margin-top: 15px;
+  padding: 12px;
   text-align: center;
-  font-weight: 500;
-  font-size: 0.9rem;
-  color: #333;
+  font-weight: 600;
+  font-size: 1rem;
+  background-color: #FFFFFF;
+  color: #525FE1;
+  border-radius: 8px;
 }
 
 @keyframes scroll-down {

@@ -38,7 +38,7 @@ const Login = () => {
       <div className="main">
         <div className="Login-card">
           <h2 style={{ fontWeight: 'bold', margin: '0px', padding: '0px' }}>Login</h2>
-          <p className="small-text">Enter your email and password for log in</p>
+          <p className="small-text" style={{color :"black"}}>Enter your email and password for log in</p>
           <div>
             <input
               type="email"
@@ -64,17 +64,17 @@ const Login = () => {
             <div className="login-options">
               <div className="remember-me small-text">
                 <input type="checkbox" id="remember" style={{ height: '11px', width: '11px' }} />
-                <label htmlFor="remember">Remember me</label>
+                <label htmlFor="remember" style={{color:"black"}}>Remember me</label>
               </div>
-              <a href="#" style={{ color: '#2266f0' }}>Forgot password?</a>
+              <a href="#" style={{ color: '#f86f03' }}>Forgot password?</a>
             </div>
           </div>
           <button className="login-button" onClick={handleNormalLogin}>Log In</button>
           {error && <p style={{ color: 'red', fontSize: '12px' }}>{error}</p>}
-          <div className="divider">
-            <div className="line" style={{ backgroundColor: 'white', width: '80px' }} />
-            <span style={{ fontSize: '11px', color: "#444444" }}>Or login with</span>
-            <div className="line" style={{ backgroundColor: 'white', width: '80px' }} />
+          <div className="login-divider">
+            <hr style={{ backgroundColor: 'black', width: '80px' }} />
+            <span style={{ fontSize: '11px', color: "black" }}>Or login with</span>
+            <hr style={{ backgroundColor: 'black', width: '80px' }} />
           </div>
           <div className="sso-buttons">
             <button className="sso" onClick={() => window.location.href = "http://localhost:5000/auth/google"}>
@@ -82,9 +82,9 @@ const Login = () => {
             </button>
           </div>
           <div style={{ display: "flex", justifyContent: "center", fontSize: "11px", marginTop: "10px" }}>
-            <span style={{ marginRight: "4px", color: "#444" }}>Don't have an account?</span>
+            <span style={{ marginRight: "4px", color: "black" }}>Don't have an account?</span>
             <Link
-              style={{ color: "#2266f0", cursor: "pointer", textDecoration: "none" }}
+              style={{ color: "#f86f03", cursor: "pointer", textDecoration: "none" }}
               to="/signup">SignUp</Link>
           </div>
         </div>

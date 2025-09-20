@@ -1,0 +1,18 @@
+/* Font Utility */
+.quicksand {
+  font-family: "Quicksand", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.end {
+  background-color: #525FE1; /* Indigo */
+  color: #FFFFFF; /* White */
+  font-weight: 600;
+  text-align: center;
+  padding: 2px 2px;   
+  width: 100%;     
+  margin: 1px 0px 0px 1px;   
+  font-size: 16px;   
+}
