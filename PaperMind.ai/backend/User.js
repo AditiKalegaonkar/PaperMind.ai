@@ -11,7 +11,6 @@ const userSchema = new mongoose.Schema(
     },
     password: { type: String }, // only for local login
     googleId: { type: String, default: null },
-    facebookId: { type: String, default: null },
   },
   { timestamps: true }
 );

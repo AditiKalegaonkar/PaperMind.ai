@@ -1,18 +1,12 @@
 from google.adk.agents import Agent
 from google.adk.tools import FunctionTool, ToolContext
-from google.adk.runners import Runner
-from google.adk.sessions import InMemorySessionService
-from google.genai import types
+from google.adk.tools.agent_tool import AgentTool
 import tools
-import asyncio
-
-APP_NAME = "rag_agent_app"
-USER_ID = "user1234"
-SESSION_ID = "sess123"
 
 
-def get_path(path: str, tool_context: ToolContext):
+def get_path(path: str, query: str, tool_context: ToolContext):
     tool_context.state['path'] = path
+    tool_context.state['query'] = query
 
 
 def RAG_pipeline(tool_context: ToolContext):
@@ -24,6 +18,7 @@ def RAG_pipeline(tool_context: ToolContext):
         return "Error: File path not found in context. Please call 'get_path' first."
     print(f"--- Running RAG pipeline on: {file_path} ---")
     summary = tools.RAG_pipeline(file_path)
+    tool_context.state['summary'] = summary
     return summary
 
 
@@ -46,31 +41,9 @@ rag_agent = Agent(
         - Call get_path(path) to store it.
         - Call RAG_pipeline() to analyze the document using the stored path.
     Respond with results from RAG_pipeline and any relevant analysis.
+    Extract suitable articles and get information for them using the get_article_information tool
     """,
-    tools=[rag_function_tool, get_path],
+    tools=[rag_function_tool, get_path, tools.get_article_information],
 )
 
-
-async def main():
-    session_service = InMemorySessionService()
-    await session_service.create_session(app_name=APP_NAME, user_id=USER_ID, session_id=SESSION_ID)
-    runner = Runner(agent=rag_agent, app_name=APP_NAME,
-                    session_service=session_service)
-
-    path = str(input("Enter the complete path of the PDF: "))
-
-    # The user's message containing the path to be processed
-    content = types.Content(
-        role="user", parts=[types.Part(text=f"Please analyze the document at this path: {path}")])
-
-    # The runner.run method returns an iterator for the conversation events
-    events = runner.run(
-        user_id=USER_ID, session_id=SESSION_ID, new_message=content)
-
-    for event in events:
-        if event.is_final_response():
-            print("\nAgent's Final Response:")
-            print(event.content.parts[0].text)
-
-if __name__ == "__main__":
-    asyncio.run(main())
+rag_agent_tool = AgentTool(agent=rag_agent)

@@ -24,7 +24,7 @@ const Login = () => {
 
       if (res.data.user) {
         // redirect to dashboard
-        window.location.href = "/dashboard";
+        window.location.href = "/userDashboard";
       } else if (res.data.error) {
         setError(res.data.error);
       }
