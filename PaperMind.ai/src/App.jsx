@@ -4,6 +4,8 @@ import About from "./Pages/About.jsx";
 import Contacts from "./Pages/Contacts.jsx";  
 import Login from "./Pages/Login.jsx"; 
 import SignUp from "./Pages/SignUp.jsx";
+import UserDashboard from "./Pages/UserDashboard.jsx";
+
 function App() {
   return (
       <Routes>
@@ -12,6 +14,7 @@ function App() {
         <Route path="/contacts" element={<Contacts />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />
+        <Route path="/userDashboard" element={<UserDashboard />} />
       </Routes>
   );
 }

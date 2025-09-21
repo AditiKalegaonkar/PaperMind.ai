@@ -27,11 +27,28 @@ function Dashboard() {
   };
 
   const agents = [
-    { title: "Legal", description: "Get expert legal guidance and document support.", mascot: legalMascot },
-    { title: "Education", description: "Educational insights and tutoring assistance.", mascot: eduMascot },
-    { title: "Financial", description: "Financial advice, budgeting, and investment tips.", mascot: financialMascot },
-    { title: "Other", description: "General-purpose support for all your needs.", mascot: otherMascot },
+    { 
+      title: "Legal Dict", 
+      description: "Get expert legal guidance and define terms in your documents.", 
+      mascot: legalMascot 
+    },
+    { 
+      title: "Law Tracker", 
+      description: "Educational insights and tutoring assistance for law-related topics.", 
+      mascot: eduMascot 
+    },
+    { 
+      title: "Risk Analyser", 
+      description: "Analyze financial and legal risks, budgeting, and investment advice.", 
+      mascot: financialMascot 
+    },
+    { 
+      title: "RAG", 
+      description: "General-purpose retrieval-augmented support for all your document needs.", 
+      mascot: otherMascot 
+    },
   ];
+
 
   const howItWorksSteps = [
     { number: "01", title: "Upload Your Document", description: "Securely upload any PDF, scanned text, or policy manual. Our system parses and prepares it for analysis." },
@@ -43,15 +60,9 @@ function Dashboard() {
     { icon: SearchIcon, title: "Semantic Search", description: "Go beyond keywords. Find concepts and contextually relevant information instantly." },
     { icon: RobotIcon, title: "Multi-Agent System", description: "Specialized agents for legal, financial, and educational domains provide expert-level insights." },
     { icon: LinkIcon, title: "RAG Technology", description: "Our Retrieval-Augmented Generation ensures answers are accurate and grounded in your document's text." },
-    { icon: LockIcon, title: "Secure & Private", description: "Your data is encrypted and confidential. We prioritize the security of your sensitive information." }
+    { icon: LockIcon, title: "Session Memory saved", description: "Session Memory is store so you can go back to previous sessions" }
   ];
   
-  const testimonials = [
-      { quote: "PaperMind.ai transformed our contract review process. What used to take days now takes minutes. A total game-changer!", author: "Alex Johnson", company: "Legal Lead, Innovate Corp" },
-      { quote: "As a researcher, sifting through academic papers is my biggest challenge. This tool is like having a genius research assistant available 24/7.", author: "Dr. Emily Carter", company: "Academic Researcher" }
-  ];
-
-
   return (
     <div className="Landing-Page quicksand">
       <Navbar />
@@ -115,24 +126,11 @@ function Dashboard() {
             <div className="features-grid">
                 {features.map((feature, index) => (
                     <div key={index} className="feature-item">
-                        {/* ERROR 1 & 2 FIX: Use an <img> tag and remove the tiny inline style */}
                         <div className="feature-icon">
                             <img src={feature.icon} alt={`${feature.title} icon`} />
                         </div>
                         <h3>{feature.title}</h3>
                         <p>{feature.description}</p>
-                    </div>
-                ))}
-            </div>
-        </div>
-
-        <div className="testimonials-section">
-            <h2 className="section-title">What Our Users Say</h2>
-            <div className="testimonials-wrapper">
-                {testimonials.map((testimonial, index) => (
-                    <div key={index} className="testimonial-card">
-                        <p className="quote">"{testimonial.quote}"</p>
-                        <p className="author">- {testimonial.author}, <em>{testimonial.company}</em></p>
                     </div>
                 ))}
             </div>
