@@ -7,15 +7,12 @@ import { fileURLToPath } from "url";
 import mongoose from "mongoose";
 import passport from "./passport.js";
 import session from "express-session";
-import SQLiteStore from "connect-sqlite3";
 import cors from "cors";
 import bcrypt from "bcryptjs";
 import User from "./User.js";
 import multer from "multer";
 import { spawn } from "child_process";
 import fs from "fs";
-import sqlite3 from "sqlite3";
-import { open } from "sqlite";
 
 const app = express();
 const __filename = fileURLToPath(import.meta.url);
@@ -35,17 +32,12 @@ mongoose
   .then(() => console.log("MongoDB connected"))
   .catch((err) => console.error("MongoDB error:", err));
 
-// --- Session with SQLite store ---
+// --- In-memory session ---
 app.use(
   session({
-    store: new SQLiteStore({
-      db: "sessions.sqlite",
-      dir: "./database",
-      table: "sessions",
-    }),
     secret: process.env.SESSION_SECRET,
     resave: false,
-    saveUninitialized: false,
+    saveUninitialized: true,
     cookie: { httpOnly: true, maxAge: 24 * 60 * 60 * 1000 },
   })
 );
@@ -103,18 +95,9 @@ app.get("/auth/user", (req, res) => {
 });
 
 app.get("/auth/logout", (req, res, next) => {
-  if (req.logout) {
-    req.logout((err) => {
-      if (err) return next(err);
-      req.session.destroy();
-      res.clearCookie("connect.sid");
-      res.redirect(process.env.FRONTEND_URL);
-    });
-  } else {
-    req.session.destroy();
-    res.clearCookie("connect.sid");
-    res.redirect(process.env.FRONTEND_URL);
-  }
+  req.session.destroy();
+  res.clearCookie("connect.sid");
+  res.redirect(process.env.FRONTEND_URL);
 });
 
 // --- Auth middleware ---
@@ -150,7 +133,7 @@ const upload = multer({
 
 // --- Analyze route (calls Python) ---
 app.post("/analyze", isAuthenticated, upload.single("document"), (req, res) => {
-  const { query, sessionId: requestedSessionId } = req.body;
+  const { query } = req.body;
   const file = req.file;
   const userId = req.session.user?.id || req.user?.id;
 
@@ -158,10 +141,6 @@ app.post("/analyze", isAuthenticated, upload.single("document"), (req, res) => {
   if (!query) {
     fs.unlinkSync(file.path);
     return res.status(400).send("Query is required");
-  }
-  if (!userId) {
-    fs.unlinkSync(file.path);
-    return res.status(401).send("Authentication error");
   }
 
   const pythonScript = path.resolve(__dirname, "..", "python-backend", "agent.py");
@@ -172,12 +151,8 @@ app.post("/analyze", isAuthenticated, upload.single("document"), (req, res) => {
     cwd: path.dirname(pythonScript),
   });
 
-  // Use existing session ID if provided; else use current session
-  const sessionIdToSend = requestedSessionId || req.sessionID;
-
   pythonProcess.stdin.write(
     JSON.stringify({
-      sessionId: sessionIdToSend,
       userId: userId.toString(),
       query: query.trim(),
       path: path.resolve(file.path),
@@ -195,40 +170,6 @@ app.post("/analyze", isAuthenticated, upload.single("document"), (req, res) => {
     });
     res.send(output);
   });
-});
-
-// --- Fetch previous sessions for the logged-in user ---
-app.get("/auth/sessions", isAuthenticated, async (req, res) => {
-  try {
-    const db = await open({
-      filename: "./database/sessions.sqlite",
-      driver: sqlite3.Database,
-    });
-
-    const rows = await db.all("SELECT sid, sess, expire FROM sessions ORDER BY expire DESC");
-    await db.close();
-
-    const userSessions = rows
-      .map(row => {
-        try {
-          const sessionData = JSON.parse(row.sess);
-          if (sessionData.user && sessionData.user.id === req.session.user.id) {
-            return {
-              sessionId: row.sid,
-              createdAt: new Date(row.expire - 24 * 60 * 60 * 1000),
-            };
-          }
-        } catch (e) {
-          return null;
-        }
-      })
-      .filter(s => s !== null);
-
-    res.json({ sessions: userSessions });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to fetch sessions" });
-  }
 });
 
 // --- Health check ---
