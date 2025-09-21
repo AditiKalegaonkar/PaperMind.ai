@@ -22,7 +22,7 @@ risk_analyser_agent = Agent(
             If uncertain about Plotly.js syntax, first query google_search.
             Once code is generated, execute it using BuiltInCodeExecutor.
         """,
-    tools=[google_search, BuiltInCodeExecutor]
+    tools=[google_search]
 )
 
 risk_analyser_agent_tool = AgentTool(agent=risk_analyser_agent)

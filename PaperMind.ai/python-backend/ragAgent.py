@@ -41,7 +41,8 @@ rag_agent = Agent(
         - Call get_path(path) to store it.
         - Call RAG_pipeline() to analyze the document using the stored path.
     Respond with results from RAG_pipeline and any relevant analysis.
-    Extract suitable articles and get information for them using the get_article_information tool
+    Extract suitable articles and get information for them using the get_article_information tool.
+    Don't use RAG agent if you have got the summary already. 
     """,
     tools=[rag_function_tool, get_path, tools.get_article_information],
 )

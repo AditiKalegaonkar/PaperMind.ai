@@ -33,7 +33,7 @@ function About() {
   const personas = [
     { icon: legalIcon, title: "Legal Professionals", desc: "Navigate complex contracts and regulations with ease. Identify compliance risks and summarize legal precedents in seconds."},
     { icon: financeIcon, title: "Financial Analysts", desc: "Extract key data from financial reports, audit documents, and insurance policies to accelerate due diligence and risk assessment." },
-    { icon: eduIcon, title: "Researchers", desc: "Quickly synthesize information from dense academic papers, journals, and textbooks to support your research and writing." },
+    { icon: eduIcon, title: "Common People", desc: "Quickly synthesize information from dense documents, guides, and articles to get clear and easy-to-understand insights."},
     { icon: enterpriseIcon, title: "Enterprise Teams", desc: "Empower your organization to understand internal policies, technical manuals, and project documentation effortlessly."},
   ];
 

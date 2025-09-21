@@ -7,12 +7,15 @@ import { fileURLToPath } from "url";
 import mongoose from "mongoose";
 import passport from "./passport.js";
 import session from "express-session";
+import SQLiteStore from "connect-sqlite3";
 import cors from "cors";
 import bcrypt from "bcryptjs";
 import User from "./User.js";
 import multer from "multer";
 import { spawn } from "child_process";
 import fs from "fs";
+import sqlite3 from "sqlite3";
+import { open } from "sqlite";
 
 const app = express();
 const __filename = fileURLToPath(import.meta.url);
@@ -25,8 +28,21 @@ app.use(
     credentials: true,
   })
 );
+
+// --- MongoDB connection (for user data) ---
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() => console.log("MongoDB connected"))
+  .catch((err) => console.error("MongoDB error:", err));
+
+// --- Session with SQLite store ---
 app.use(
   session({
+    store: new SQLiteStore({
+      db: "sessions.sqlite",
+      dir: "./database",
+      table: "sessions",
+    }),
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
@@ -37,11 +53,7 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB connected"))
-  .catch((err) => console.error("MongoDB error:", err));
-
+// --- Google Auth ---
 app.get(
   "/auth/google",
   passport.authenticate("google", { scope: ["profile", "email"] })
@@ -55,16 +67,14 @@ app.get(
   }
 );
 
+// --- Registration & Login ---
 app.post("/auth/register", async (req, res) => {
   const { firstName, lastName, email, password, phone } = req.body;
-
-  if (!firstName || !lastName || !email || !password || !phone) {
+  if (!firstName || !lastName || !email || !password || !phone)
     return res.status(400).json({ error: "Missing fields" });
-  }
 
-  if (await User.findOne({ email: email.toLowerCase() })) {
+  if (await User.findOne({ email: email.toLowerCase() }))
     return res.status(400).json({ error: "Email exists" });
-  }
 
   const hashed = await bcrypt.hash(password, 10);
   const newUser = new User({
@@ -75,17 +85,14 @@ app.post("/auth/register", async (req, res) => {
     phone,
   });
   await newUser.save();
-
   res.status(201).json({ message: "User created" });
 });
 
 app.post("/auth/login", async (req, res) => {
   const { email, password } = req.body;
-
   const user = await User.findOne({ email: email.toLowerCase() });
-  if (!user || !(await bcrypt.compare(password, user.password))) {
+  if (!user || !(await bcrypt.compare(password, user.password)))
     return res.status(400).json({ error: "Invalid credentials" });
-  }
 
   req.session.user = { id: user._id, firstName: user.firstName, email: user.email };
   res.json({ message: "Logged in", user: req.session.user });
@@ -100,251 +107,145 @@ app.get("/auth/logout", (req, res, next) => {
     req.logout((err) => {
       if (err) return next(err);
       req.session.destroy();
-      res.clearCookie('connect.sid');
+      res.clearCookie("connect.sid");
       res.redirect(process.env.FRONTEND_URL);
     });
   } else {
     req.session.destroy();
-    res.clearCookie('connect.sid');
+    res.clearCookie("connect.sid");
     res.redirect(process.env.FRONTEND_URL);
   }
 });
 
+// --- Auth middleware ---
 const isAuthenticated = (req, res, next) => {
-  if (req.isAuthenticated() || req.session.user) {
-    return next();
-  }
+  if (req.isAuthenticated() || req.session.user) return next();
   res.status(401).json({ error: "User not authenticated" });
 };
 
+// --- Multer config for file uploads ---
 const uploadDir = "uploads";
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir);
-}
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`),
 });
 
-const upload = multer({ 
-  storage: storage,
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
-  },
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    // Accept common document types
-    const allowedMimes = [
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'text/plain'
+    const allowed = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "text/plain",
     ];
-    
-    if (allowedMimes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Invalid file type. Only PDF, DOC, DOCX, and TXT files are allowed.'));
-    }
-  }
+    allowed.includes(file.mimetype)
+      ? cb(null, true)
+      : cb(new Error("Invalid file type. Only PDF, DOC, DOCX, and TXT allowed."));
+  },
 });
 
+// --- Analyze route (calls Python) ---
 app.post("/analyze", isAuthenticated, upload.single("document"), (req, res) => {
-  let tempFilePath = '';
-  
-  try {
-    const { query } = req.body;
-    const file = req.file;
-    const userId = req.session.user?.id || req.user?.id;
+  const { query, sessionId: requestedSessionId } = req.body;
+  const file = req.file;
+  const userId = req.session.user?.id || req.user?.id;
 
-    console.log('Analyze request received:', {
-      query: query || 'No query provided',
-      fileName: file?.originalname || 'No file',
-      userId: userId || 'No user ID'
-    });
+  if (!file) return res.status(400).send("No document uploaded");
+  if (!query) {
+    fs.unlinkSync(file.path);
+    return res.status(400).send("Query is required");
+  }
+  if (!userId) {
+    fs.unlinkSync(file.path);
+    return res.status(401).send("Authentication error");
+  }
 
-    if (!file) {
-      return res.status(400).json({ 
-        error: "No document uploaded",
-        details: "No document file was uploaded." 
-      });
-    }
+  const pythonScript = path.resolve(__dirname, "..", "python-backend", "agent.py");
+  if (!fs.existsSync(pythonScript)) return res.status(500).send("Python script not found");
 
-    if (!query || query.trim() === '') {
-      // Clean up uploaded file if query is missing
-      fs.unlink(file.path, (err) => {
-        if (err) console.error(`Failed to delete file: ${err}`);
-      });
-      return res.status(400).json({ 
-        error: "Query required",
-        details: "Please provide a query for document analysis." 
-      });
-    }
+  const pythonProcess = spawn("python", [pythonScript], {
+    stdio: ["pipe", "pipe", "pipe"],
+    cwd: path.dirname(pythonScript),
+  });
 
-    if (!userId) {
-      // Clean up uploaded file if user not authenticated
-      fs.unlink(file.path, (err) => {
-        if (err) console.error(`Failed to delete file: ${err}`);
-      });
-      return res.status(401).json({ 
-        error: "Authentication error",
-        details: "Could not identify user from session." 
-      });
-    }
+  // Use existing session ID if provided; else use current session
+  const sessionIdToSend = requestedSessionId || req.sessionID;
 
-    tempFilePath = file.path;
-
-    // Construct absolute path to Python script
-    const pythonScriptPath = path.resolve(__dirname, "..", "python-backend", "agent.py");
-    
-    console.log('Python script path:', pythonScriptPath);
-    
-    // Check if Python script exists
-    if (!fs.existsSync(pythonScriptPath)) {
-      throw new Error(`Python script not found at: ${pythonScriptPath}`);
-    }
-
-    // Spawn Python process
-    const pythonProcess = spawn("python", [pythonScriptPath], {
-      stdio: ['pipe', 'pipe', 'pipe'],
-      cwd: path.dirname(pythonScriptPath) // Set working directory to python-backend
-    });
-    
-    const dataForPython = {
+  pythonProcess.stdin.write(
+    JSON.stringify({
+      sessionId: sessionIdToSend,
       userId: userId.toString(),
       query: query.trim(),
-      path: path.resolve(tempFilePath) // Send absolute path
-    };
+      path: path.resolve(file.path),
+    })
+  );
+  pythonProcess.stdin.end();
 
-    console.log('Sending data to Python:', dataForPython);
+  let output = "";
+  pythonProcess.stdout.on("data", (data) => (output += data.toString()));
+  pythonProcess.stderr.on("data", (data) => console.error(data.toString()));
 
-    // Send data to Python script
-    pythonProcess.stdin.write(JSON.stringify(dataForPython));
-    pythonProcess.stdin.end();
+  pythonProcess.on("close", () => {
+    fs.unlink(file.path, (err) => {
+      if (err) console.error(`Failed to delete temp file: ${err}`);
+    });
+    res.send(output);
+  });
+});
 
-    let pythonOutput = "";
-    let pythonError = "";
-
-    pythonProcess.stdout.on("data", (data) => {
-      const output = data.toString();
-      console.log('Python stdout:', output);
-      pythonOutput += output;
+// --- Fetch previous sessions for the logged-in user ---
+app.get("/auth/sessions", isAuthenticated, async (req, res) => {
+  try {
+    const db = await open({
+      filename: "./database/sessions.sqlite",
+      driver: sqlite3.Database,
     });
 
-    pythonProcess.stderr.on("data", (data) => {
-      const error = data.toString();
-      console.log('Python stderr:', error);
-      pythonError += error;
-    });
+    const rows = await db.all("SELECT sid, sess, expire FROM sessions ORDER BY expire DESC");
+    await db.close();
 
-    // Set timeout for Python process
-    const timeout = setTimeout(() => {
-      pythonProcess.kill('SIGTERM');
-      console.log('Python process timed out');
-    }, 300000); // 5 minutes timeout
-
-    pythonProcess.on("close", (code) => {
-      clearTimeout(timeout);
-      console.log(`Python process exited with code ${code}`);
-      
-      // Clean up temporary file
-      fs.unlink(tempFilePath, (err) => {
-        if (err) console.error(`Failed to delete temp file: ${err}`);
-        else console.log(`Deleted temp file: ${tempFilePath}`);
-      });
-
-      if (code === 0) {
+    const userSessions = rows
+      .map(row => {
         try {
-          // Try to parse the output as JSON first
-          let response;
-          try {
-            response = JSON.parse(pythonOutput.trim());
-          } catch (e) {
-            // If not JSON, treat as plain text
-            response = pythonOutput.trim();
+          const sessionData = JSON.parse(row.sess);
+          if (sessionData.user && sessionData.user.id === req.session.user.id) {
+            return {
+              sessionId: row.sid,
+              createdAt: new Date(row.expire - 24 * 60 * 60 * 1000),
+            };
           }
-          
-          res.status(200).json({ 
-            success: true,
-            response: response,
-            message: "Document analyzed successfully"
-          });
-        } catch (error) {
-          console.error('Error processing Python output:', error);
-          res.status(500).json({ 
-            error: "Processing error",
-            details: "Error processing analysis results." 
-          });
+        } catch (e) {
+          return null;
         }
-      } else {
-        console.error('Python script error:', pythonError);
-        res.status(500).json({ 
-          error: "Analysis failed",
-          details: `Python script error: ${pythonError || 'Unknown error'}`,
-          code: code
-        });
-      }
-    });
+      })
+      .filter(s => s !== null);
 
-    pythonProcess.on("error", (error) => {
-      clearTimeout(timeout);
-      console.error('Failed to start Python process:', error);
-      
-      // Clean up temporary file
-      if (tempFilePath && fs.existsSync(tempFilePath)) {
-        fs.unlink(tempFilePath, (err) => {
-          if (err) console.error(`Failed to delete temp file on error: ${err}`);
-        });
-      }
-      
-      res.status(500).json({ 
-        error: "Process error",
-        details: "Failed to start document analysis process." 
-      });
-    });
-
-  } catch (error) {
-    console.error("Server error in /analyze:", error);
-    
-    // Clean up temporary file on error
-    if (tempFilePath && fs.existsSync(tempFilePath)) {
-      fs.unlink(tempFilePath, (err) => {
-        if (err) console.error(`Failed to delete temp file on error: ${err}`);
-      });
-    }
-    
-    res.status(500).json({ 
-      error: "Server error",
-      details: "An unexpected server error occurred." 
-    });
+    res.json({ sessions: userSessions });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch sessions" });
   }
 });
 
-// Health check endpoint
+// --- Health check ---
 app.get("/health", (req, res) => {
-  res.status(200).json({ 
-    status: "OK", 
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime()
-  });
+  res.status(200).json({ status: "OK", uptime: process.uptime() });
 });
 
-// Serve frontend static files
-const frontendBuildPath = path.join(__dirname, "../frontend/build");
-if (fs.existsSync(frontendBuildPath)) {
-  app.use(express.static(frontendBuildPath));
+// --- Serve frontend ---
+const frontendBuild = path.join(__dirname, "../frontend/build");
+if (fs.existsSync(frontendBuild)) {
+  app.use(express.static(frontendBuild));
   app.get("*", (req, res) => {
-    res.sendFile(path.join(frontendBuildPath, "index.html"));
+    res.sendFile(path.join(frontendBuild, "index.html"));
   });
 } else {
-  console.warn("Frontend build directory not found:", frontendBuildPath);
-  app.get("/", (req, res) => {
-    res.json({ message: "Backend is running, but frontend build not found." });
-  });
+  app.get("/", (req, res) => res.json({ message: "Backend running, frontend not found." }));
 }
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-});
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
