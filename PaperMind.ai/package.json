@@ -31,7 +31,10 @@
     "react-phone-input-2": "^2.15.1",
     "react-router-dom": "^7.9.1",
     "react-simple-typewriter": "^5.0.1",
+<<<<<<< HEAD
     "sqlite": "^5.1.1",
+=======
+>>>>>>> main
     "uuid": "^13.0.0"
   },
   "devDependencies": {
