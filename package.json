@@ -1,13 +1,14 @@
 {
   "name": "papermind-ai",
+  "version": "1.0.0",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "node backend/server.js"
   },
   "dependencies": {
     "axios": "^1.12.2",
@@ -31,10 +32,6 @@
     "react-phone-input-2": "^2.15.1",
     "react-router-dom": "^7.9.1",
     "react-simple-typewriter": "^5.0.1",
-<<<<<<< HEAD
-    "sqlite": "^5.1.1",
-=======
->>>>>>> main
     "uuid": "^13.0.0"
   },
   "devDependencies": {
