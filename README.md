@@ -40,7 +40,7 @@ PaperMind.ai is a secure full-stack AI platform that processes complex legal doc
 ## Roadmap  
 - [ ] Add multilingual legal document support  
 - [ ] Expand visualization modules  
-- [-] Enhance web crawler for broader legal jurisdictions  
+- [x] Enhance web crawler for broader legal jurisdictions  
 - [ ] Support contract drafting suggestions  
 
 ## License  
