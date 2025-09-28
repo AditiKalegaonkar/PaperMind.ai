@@ -1,8 +1,4 @@
 
-body{
-  background-color: #FFFFFF;
-}
-
 .quicksand {
   font-family: "Quicksand", sans-serif;
   font-optical-sizing: auto;
@@ -20,7 +16,7 @@ nav {
   align-items: center;
   justify-content: space-between;
   padding: 0 2rem;
-  background-color:white; /* Indigo */
+  background-color:white; 
   box-shadow: 0 2px 5px rgba(82, 95, 225, 0.2); /* Soft Indigo Shadow */
   z-index: 1000;
   box-sizing: border-box;

@@ -13,6 +13,7 @@ import User from "./User.js";
 import multer from "multer";
 import { spawn } from "child_process";
 import fs from "fs";
+import { URL } from "url";
 
 const app = express();
 const __filename = fileURLToPath(import.meta.url);
@@ -32,7 +33,7 @@ mongoose
   .then(() => console.log("MongoDB connected"))
   .catch((err) => console.error("MongoDB error:", err));
 
-// --- In-memory session ---
+// --- In-memory session (for production use connect-mongo or Redis) ---
 app.use(
   session({
     secret: process.env.SESSION_SECRET,
@@ -51,8 +52,16 @@ app.get(
   passport.authenticate("google", { scope: ["profile", "email"] })
 );
 
+// Ensure callback works whether GOOGLE_CALLBACK is full URL or just path
+let callbackPath = process.env.GOOGLE_CALLBACK;
+try {
+  callbackPath = new URL(process.env.GOOGLE_CALLBACK).pathname;
+} catch {
+  // if it's already just a path, keep it
+}
+
 app.get(
-  process.env.GOOGLE_CALLBACK,
+  callbackPath,
   passport.authenticate("google", { failureRedirect: "/login" }),
   (req, res) => {
     res.redirect(`${process.env.FRONTEND_URL}/userDashboard`);
@@ -94,10 +103,11 @@ app.get("/auth/user", (req, res) => {
   res.json({ user: req.user || req.session.user || null });
 });
 
-app.get("/auth/logout", (req, res, next) => {
-  req.session.destroy();
-  res.clearCookie("connect.sid");
-  res.redirect(process.env.FRONTEND_URL);
+app.get("/auth/logout", (req, res) => {
+  req.session.destroy(() => {
+    res.clearCookie("connect.sid");
+    res.redirect(process.env.FRONTEND_URL);
+  });
 });
 
 // --- Auth middleware ---
@@ -135,7 +145,7 @@ const upload = multer({
 app.post("/analyze", isAuthenticated, upload.single("document"), (req, res) => {
   const { query } = req.body;
   const file = req.file;
-  const userId = req.session.user?.id || req.user?.id;
+  const userId = req.session.user?.id || req.user?._id;
 
   if (!file) return res.status(400).send("No document uploaded");
   if (!query) {
@@ -153,7 +163,7 @@ app.post("/analyze", isAuthenticated, upload.single("document"), (req, res) => {
 
   pythonProcess.stdin.write(
     JSON.stringify({
-      userId: userId.toString(),
+      userId: userId?.toString(),
       query: query.trim(),
       path: path.resolve(file.path),
     })
@@ -185,7 +195,9 @@ if (fs.existsSync(frontendBuild)) {
     res.sendFile(path.join(frontendBuild, "index.html"));
   });
 } else {
-  app.get("/", (req, res) => res.json({ message: "Backend running, frontend not found." }));
+  app.get("/", (req, res) =>
+    res.json({ message: "Backend running, frontend not found." })
+  );
 }
 
 const PORT = process.env.PORT || 5000;
