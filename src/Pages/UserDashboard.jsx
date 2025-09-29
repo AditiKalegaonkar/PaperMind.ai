@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import './UserDashboard.css';
 import { useNavigate } from 'react-router-dom';
-
 const API_URL = 'http://localhost:5000';
 
 // Safe JSON parser
@@ -18,23 +17,21 @@ const safeJsonParse = (jsonString, fallback = {}) => {
 const PaperClipIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.59a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
-  </svg>
+  </svg> 
 );
-
 const SendIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="22" y1="2" x2="11" y2="13"></line>
     <polygon points="22,2 15,22 11,13 2,9"></polygon>
   </svg>
-);
 
+);
 const PlusIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <line x1="12" y1="5" x2="12" y2="19"></line>
     <line x1="5" y1="12" x2="19" y2="12"></line>
   </svg>
 );
-
 const BotIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M12 8V4H8" />
@@ -44,7 +41,6 @@ const BotIcon = () => (
     <path d="M12 18v2" />
   </svg>
 );
-
 const UserIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
@@ -103,7 +99,6 @@ function UserDashboard() {
   const fileInputRef = useRef(null);
   const chatEndRef = useRef(null);
   const navigate = useNavigate();
-
   // --- Load user & chat sessions from server ---
   useEffect(() => {
     const fetchUserData = async () => {
@@ -178,7 +173,6 @@ function UserDashboard() {
     setSelectedFile(null);
     setUserInput('');
   };
-
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file && file.type !== 'application/pdf') {
@@ -269,7 +263,7 @@ function UserDashboard() {
         )
       );
     } finally {
-      setIsLoading(false);
+        setIsLoading(false);
     }
   };
 
@@ -316,9 +310,7 @@ function UserDashboard() {
                 {chat.messages[0]?.content?.substring(0, 50) || "No messages"}...
               </div>
             </div>
-          ))}
         </div>
-
         <div className="sidebar-footer">
           <div className="user-info">
             <UserIcon />

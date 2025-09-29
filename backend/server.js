@@ -15,6 +15,7 @@ import passport from "./passport.js";
 
 import User from "./User.js";
 import Chat from "./Chat.js";
+import { URL } from "url";
 
 const app = express();
 const __filename = fileURLToPath(import.meta.url);
@@ -36,8 +37,7 @@ mongoose.connect(process.env.MONGO_URI)
     .catch(err => {
         console.error("MongoDB connection error:", err);
         process.exit(1);
-    });
-
+ 
 app.use(session({
     secret: process.env.SESSION_SECRET,
     resave: false,
@@ -60,8 +60,6 @@ const isAuthenticated = (req, res, next) => {
     if (req.isAuthenticated()) return next();
     res.status(401).json({ error: "Not authenticated" });
 };
-
-// --- AUTHENTICATION ROUTES (No changes here) ---
 
 app.post("/auth/register", async (req, res) => {
     try {
@@ -179,6 +177,7 @@ const upload = multer({
         }
     }
 });
+
 
 async function saveChatMessage(userId, sessionId, query, answer) {
     try {
@@ -318,7 +317,6 @@ app.post("/receive", isAuthenticated, upload.single("document"), async (req, res
     } finally {
         if (file) fs.unlink(file.path, err => err && console.error("Failed to delete temp file:", err));
     }
-});
 
 app.post("/chat", isAuthenticated, async (req, res) => {
     try {
@@ -354,13 +352,24 @@ app.post("/chat", isAuthenticated, async (req, res) => {
         res.status(500).json({ error: "Chat processing failed" });
     }
 });
-
 app.get("/health", (req, res) => res.json({ status: "ok", timestamp: new Date() }));
 
 app.use((error, req, res, next) => {
     console.error("Unhandled error:", error);
     res.status(500).json({ error: "Internal server error" });
 });
+// --- Serve frontend ---
+const frontendBuild = path.join(__dirname, "../frontend/build");
+if (fs.existsSync(frontendBuild)) {
+  app.use(express.static(frontendBuild));
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(frontendBuild, "index.html"));
+  });
+} else {
+  app.get("/", (req, res) =>
+    res.json({ message: "Backend running, frontend not found." })
+  );
+}
 
 const PORT = process.env.PORT;
 app.listen(PORT, () => {
