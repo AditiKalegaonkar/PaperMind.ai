@@ -32,12 +32,11 @@ async def call_agent_async(runner, USER_ID, SESSION_ID, content):
     except Exception as e:
         print(f"ERROR during agent run: {e}", file=sys.stderr)
 
-    combined_response = final_text_response
-    if final_js_code:
-        js_markdown = f"```javascript\n{final_js_code}\n```"
-        combined_response = f"{final_text_response}\n\n{js_markdown}"
-
-    return combined_response
+    return {
+        "session_id": SESSION_ID,
+        "summary": final_text_response,
+        "code": final_js_code
+    }
 
 # to update session in mongodb database
 
@@ -61,19 +60,3 @@ async def add_new_session(user_id: str, new_session_id: str):
     )
 
     return result.modified_count > 0 or result.upserted_id is not None
-
-
-# extract the code Function
-def extract_js(final_response: str):
-    if final_response is None:
-        raise ValueError("Agent did not return a response")
-    code_match = re.search(r"<div class='plot'>(.*?)</div>",
-                           final_response, re.DOTALL | re.IGNORECASE)
-    code = code_match.group(0) if code_match else ""
-    summary = re.sub(r"<div>.*?</div>", "", final_response,
-                     flags=re.DOTALL | re.IGNORECASE).strip()
-
-    return {
-        "summary": summary,
-        "code": code
-    }

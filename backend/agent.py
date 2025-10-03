@@ -5,26 +5,44 @@ import utils
 import os
 from flask import Flask, request
 import requests
-from riskAnalysisAgent import risk_analyser_agent
-from dictionaryAgent import legal_dict_agent
-from ragAgent import rag_agent
+from riskAnalysisAgent import risk_analyser_agent_tool
+from dictionaryAgent import legal_dict_agent_tool
+from ragAgent import rag_agent_tool
 from google.genai import types
 from google.adk.sessions import DatabaseSessionService
 from google.adk.runners import Runner
-from google.adk.agents import SequentialAgent
+from google.adk.agents import Agent
+from google.adk.tools import ToolContext
 from dotenv import load_dotenv
 load_dotenv()
 
 # Flask backend to get userdata
 app = Flask(__name__)
 
-root_agent = SequentialAgent(
+
+def append_response(response: str, tool_context: ToolContext):
+    tool_context.state['response'] += response
+
+
+root_agent = Agent(
     name="root_agent",
-    description="Processes a legal document through a sequence of analysis tools.",
-    sub_agents=[
-        rag_agent,
-        legal_dict_agent,
-        risk_analyser_agent,
+    description="""
+        Your task is to execute a sequence of agent tools, collect their responses, and return a single consolidated output. Follow these steps carefully:
+        1.Call rag_agent_tool and store its response.
+        2.Call legal_dict_agent_tool and store its response.
+        3.Call risk_analyser_agent_tool and store its response.
+        4.Append all responses collected from the above tools using the append_response tool.
+        Return the final appended response as the output.
+        Ensure that:
+            Each tool is called in the exact order listed.
+            No intermediate response is skipped.
+            The final output is a clean, consolidated response containing all the information from the individual tools.
+            """,
+    tools=[
+        rag_agent_tool,
+        legal_dict_agent_tool,
+        risk_analyser_agent_tool,
+        append_response
     ],
 )
 
@@ -74,7 +92,7 @@ async def process_request(session_id, query, username, path):
     final_response = await utils.call_agent_async(runner, USER_ID, SESSION_ID, content)
     print("Final response raw:", final_response)
     async with aiohttp.ClientSession() as session:
-        async with session.post("http://127.0.0.1:5000/receive_json", json=final_response) as response:
+        async with session.post("http://127.0.0.1:6000/receive_json", json=final_response) as response:
             node_response = await response.text()
             print("Node.js server response:", node_response)
 
@@ -86,16 +104,12 @@ def receive():
     session_id = request.form.get("session_id")
     query = request.form.get("query")
     username = request.form.get("username")
-    uploaded_file = request.form.get("filepath")
-    asyncio.run(process_request(session_id, query, username, uploaded_file))
+    uploaded_file = request.form.get("file_path")
+    final = asyncio.run(process_request(
+        session_id, query, username, uploaded_file))
 
-    return jsonify({
-        "status": "success",
-        "sessionId": session_id,
-        "username": username,
-        "file_path": uploaded_file
-    })
+    return final
 
 
 if __name__ == "__main__":
-    app.run(port=5000, debug=True)
+    app.run(port=6000, debug=True)
