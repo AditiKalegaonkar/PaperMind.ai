@@ -2,6 +2,8 @@ from google.adk.agents import Agent
 from google.adk.tools import FunctionTool, ToolContext
 from google.adk.tools.agent_tool import AgentTool
 import tools
+import os
+import io
 
 
 def get_path(path: str, query: str, tool_context: ToolContext):
@@ -9,18 +11,31 @@ def get_path(path: str, query: str, tool_context: ToolContext):
     tool_context.state['query'] = query
 
 
-def RAG_pipeline(tool_context: ToolContext):
+async def RAG_pipeline(tool_context: ToolContext):
     """
     Processes a document using a path stored in the session context.
     """
-    file_path = tool_context.state.get('path')
+    """file_path = tool_context.state.get('path')
     if not file_path:
         return "Error: File path not found in context. Please call 'get_path' first."
     print(f"--- Running RAG pipeline on: {file_path} ---")
     summary = tools.RAG_pipeline(file_path)
     tool_context.state['summary'] = summary
-    return summary
+    return summary"""
+    artifact_ids = await tool_context.list_artifacts()
+    artifact_id = artifact_ids[0]
+    try:
+        artifact_content = await tool_context.load_artifact(artifact_id)
+        print("The doc type: ", artifact_content.inline_data.mime_type)
+        file_name = artifact_content.inline_data.display_name
+        summary = tools.RAG_pipeline(file_name)
+        tool_context.state['summary'] = summary
+        pdf_bytes = artifact_content.inline_data.data
+        pdf_bytes_stream = io.BytesIO(pdf_bytes)
+    except FileNotFoundError:
+        print(f"Error: Artifact '{file_name}' not found.")
 
+    return summary
 
 rag_function_tool = FunctionTool(func=RAG_pipeline)
 path_tool = FunctionTool(func=get_path)

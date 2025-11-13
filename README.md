@@ -43,5 +43,24 @@ PaperMind.ai is a secure full-stack AI platform that processes complex legal doc
 - [x] Enhance web crawler for broader legal jurisdictions  
 - [ ] Support contract drafting suggestions  
 
+## Setup Instructions 
+
+Make a <code>.env</code> file with the following variables
+
+```bash
+GOOGLE_API_KEY=
+GOOGLE_GENAI_USE_VERTEXAI=FALSE
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_CALLBACK=/auth/google/callback
+PORT=5000
+FRONTEND_URL=
+SESSION_SECRET=
+MONGO_URI=
+FLASK_URL=http://127.0.0.1:6000
+NODE_ENV=production
+```
+Place this file in backend folder
+
 ## License  
 MIT License © 2025 PaperMind.ai Team  
