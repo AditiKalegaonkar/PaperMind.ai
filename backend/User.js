@@ -9,8 +9,8 @@ const userSchema = new mongoose.Schema(
       countryCode: { type: String, default: null },
       number: { type: String, unique: true, sparse: true, default: null }
     },
-    password: { type: String }, // only for local login
-    googleId: { type: String, default: null },
+    password: { type: String}, // only for local login
+    googleId: { type: String, default: null, sparse: true, },
   },
   { timestamps: true }
 );
