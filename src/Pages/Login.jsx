@@ -13,17 +13,16 @@ const Login = () => {
   const [error, setError] = useState("");
 
   const handleNormalLogin = async (e) => {
-    e.preventDefault(); // prevent form submission reload
+    e.preventDefault();
 
     try {
       const res = await axios.post(
         "http://localhost:5000/auth/login",
         { email, password },
-        { withCredentials: true } // required for cookie-session
+        { withCredentials: true } 
       );
 
       if (res.data.user) {
-        // redirect to dashboard
         window.location.href = "/userDashboard";
       } else if (res.data.error) {
         setError(res.data.error);

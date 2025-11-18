@@ -1,7 +1,7 @@
-from pymongo import MongoClient
 from datetime import datetime
 import re
 import sys
+from pymongo import MongoClient
 client = MongoClient("mongodb://localhost:27017/")
 db = client["local"]
 chats_collection = db["chats"]
