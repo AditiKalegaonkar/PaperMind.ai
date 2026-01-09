@@ -1,7 +1,8 @@
-# Prompts for all domains
 def build_financial_prompt(context, question):
     return f"""
-You are a financial domain expert.
+You are acting as a financial domain expert.
+
+Answer ONLY using the context below.
 
 Context:
 {context}
@@ -9,20 +10,22 @@ Context:
 Question:
 {question}
 
-Instructions:
-- Use standard financial terminology and clearly define any technical terms.
-- Reference relevant financial principles, metrics, or regulations (e.g., accounting standards, investment principles, tax rules) when applicable.
-- Include step-by-step reasoning for calculations, forecasts, or analyses.
-- Discuss potential risks, assumptions, and alternative scenarios where relevant.
-- Structure the answer with headings, bullet points, or numbered lists to improve clarity.
+Rules:
+- Use standard financial terminology found in the context.
+- Reuse wording from the context where possible.
+- Do not introduce new financial concepts, numbers, or assumptions.
+- If the answer is not in the context, say: "Not available in the provided context."
+- Maximum 3 lines.
 
-Provide a structured, clear, and comprehensive answer.
+Answer:
 """
 
 
 def build_legal_prompt(context, question):
     return f"""
-You are a legal domain expert.
+You are acting as a legal domain expert.
+
+Answer ONLY using the context below.
 
 Context:
 {context}
@@ -30,21 +33,22 @@ Context:
 Question:
 {question}
 
-Instructions:
-- Use precise legal terminology and clearly define any specialized terms.
-- Explain relevant laws, regulations, case precedents, or legal principles.
-- Separate factual statements from interpretations or opinions.
-- Specify jurisdictional context when necessary.
-- Identify possible implications, risks, or exceptions.
-- Organize the answer with headings, numbered points, or bullet lists for clarity.
+Rules:
+- Use legal terminology exactly as stated in the context.
+- Do not infer legal interpretations beyond the text.
+- Quote or closely paraphrase relevant sentences.
+- If the context does not specify, say: "The context does not specify this."
+- Maximum 3 lines.
 
-Provide a structured, detailed, and accurate answer.
+Answer:
 """
 
 
 def build_education_prompt(context, question):
     return f"""
-You are an education domain expert.
+You are acting as an education domain expert.
+
+Answer ONLY using the context below.
 
 Context:
 {context}
@@ -52,21 +56,21 @@ Context:
 Question:
 {question}
 
-Instructions:
-- Explain concepts progressively, starting from basic ideas and moving to advanced details.
-- Use examples, analogies, or illustrations to clarify complex ideas.
-- Break the answer into sections or steps for easier understanding.
-- Highlight key points, definitions, or takeaways.
-- Suggest learning strategies or resources if appropriate.
-- Avoid unexplained jargon; define terms when necessary.
+Rules:
+- Explain using simple academic language from the context.
+- Do not add examples, analogies, or explanations outside the context.
+- Highlight key terms only if present in the context.
+- Maximum 3 lines.
 
-Provide a structured, clear, and pedagogically sound answer.
+Answer:
 """
 
 
 def build_miscellaneous_prompt(context, question):
     return f"""
-You are a subject-matter expert relevant to the question.
+You are acting as a subject-matter expert for this topic.
+
+Answer strictly from the context below.
 
 Context:
 {context}
@@ -74,13 +78,11 @@ Context:
 Question:
 {question}
 
-Instructions:
-- Identify the most relevant domain(s) for the question.
-- Provide a balanced and neutral explanation.
-- Make all assumptions explicit and justify them.
-- Include examples or comparisons if they clarify the point.
-- Structure the answer with headings, bullet points, or numbered lists.
-- Address possible alternatives, limitations, or uncertainties.
+Rules:
+- Use terminology appropriate to the topic found in the context.
+- Do not use outside knowledge.
+- If the answer is missing, clearly state that.
+- Maximum 3 lines.
 
-Provide a structured, thorough, and easy-to-understand answer.
+Answer:
 """
