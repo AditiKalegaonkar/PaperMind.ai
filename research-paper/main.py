@@ -4,6 +4,7 @@ import nltk
 import markdown
 import os
 from dotenv import load_dotenv
+
 load_dotenv()
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
@@ -15,16 +16,16 @@ genai.configure()
 
 def main():
 
-    # LEGAL AGENT – NDA (1st LEGAL RAG)
+    # LEGAL AGENT – NDA
 
     nda_file = "nda.pdf"
 
     nda_query = "What are the obligations of the Receiving Party under the NDA?"
 
     nda_reference_answer = (
-        "The Receiving Party must keep confidential information private, use it only for the proposed transaction, "
-        "protect it with reasonable care, restrict access on a need-to-know basis, return or destroy information "
-        "upon request, and disclose it only if legally required after notifying the Disclosing Party."
+        "The Receiving Party must keep confidential information private, use it only for the permitted purpose, "
+        "protect it with reasonable care, limit access to authorized persons, return or destroy it upon request, "
+        "and disclose it only when legally required with prior notice."
     )
 
     nda_relevant_chunks = [
@@ -43,19 +44,19 @@ def main():
     )
 
     print("\nLEGAL NDA ANSWER:")
-    print(markdown.markdown(nda_answer))
+    print(nda_answer)
     print("LEGAL NDA METRICS:")
     print(nda_metrics)
 
-    # LEGAL AGENT – RENT AGREEMENT (2nd LEGAL RAG)
+    # LEGAL AGENT – RENT AGREEMENT
 
     rent_file = "extended_rental_agreement.pdf"
 
     rent_query = "What actions can the landlord take if the tenant violates the agreement?"
 
     rent_reference_answer = (
-        "If the tenant violates the agreement, the landlord may impose penalties, terminate the lease, "
-        "initiate eviction proceedings, withhold the security deposit, and claim damages for losses caused."
+        "If the tenant violates the agreement, the landlord may terminate the lease, initiate eviction proceedings, "
+        "withhold the security deposit, and claim damages for resulting losses."
     )
 
     rent_relevant_chunks = [
@@ -74,7 +75,7 @@ def main():
     )
 
     print("\nLEGAL RENT ANSWER:")
-    print(markdown.markdown(rent_answer))
+    print(rent_answer)
     print("LEGAL RENT METRICS:")
     print(rent_metrics)
 
@@ -85,7 +86,7 @@ def main():
     finance_query = "What is the total net portfolio value at the end of the statement period?"
 
     finance_reference_answer = (
-        "The total net portfolio value at the end of the statement period is 1,483,680.50 USD."
+        "The total net portfolio value at the end of the statement period is $1,483,680.50."
     )
 
     finance_relevant_chunks = [
@@ -103,7 +104,7 @@ def main():
     )
 
     print("\nFINANCE ANSWER:")
-    print(markdown.markdown(finance_answer))
+    print(finance_answer)
     print("FINANCE METRICS:")
     print(finance_metrics)
 
@@ -114,8 +115,8 @@ def main():
     education_query = "Why are AI guardrails necessary in large language model systems?"
 
     education_reference_answer = (
-        "AI guardrails are necessary to prevent harmful or unethical outputs, protect personal data, "
-        "maintain brand reputation, ensure topic adherence, and reduce hallucinations in AI systems."
+        "AI guardrails are necessary to prevent harmful outputs, protect personal data, maintain ethical compliance, "
+        "ensure topic adherence, and reduce hallucinations in AI systems."
     )
 
     education_relevant_chunks = [
@@ -134,18 +135,17 @@ def main():
     )
 
     print("\nEDUCATION ANSWER:")
-    print(markdown.markdown(education_answer))
+    print(education_answer)
     print("EDUCATION METRICS:")
     print(education_metrics)
 
-    # MISCELLANEOUS AGENT (ALL DOCS)
+    # MISCELLANEOUS – NDA
 
     nda_misc_query = "How does the NDA manage confidentiality risks between the parties?"
 
     nda_misc_reference_answer = (
-        "The NDA manages confidentiality risks by restricting disclosure of confidential information, "
-        "requiring reasonable protection measures, limiting access on a need-to-know basis, "
-        "and providing legal remedies for breaches."
+        "The NDA manages confidentiality risks by restricting disclosure, requiring reasonable protection, "
+        "limiting access on a need-to-know basis, and allowing legal remedies for breaches."
     )
 
     nda_misc_relevant_chunks = [
@@ -164,17 +164,17 @@ def main():
     )
 
     print("\nMISC NDA ANSWER:")
-    print(markdown.markdown(nda_answer))
+    print(nda_answer)
     print("MISC NDA METRICS:")
     print(nda_metrics)
 
-    # MISCELLANEOUS AGENT – RENT AGREEMENT
+    # MISC – RENT
 
     rent_misc_query = "What risk mitigation steps does the rental agreement impose on the tenant?"
 
     rent_misc_reference_answer = (
-        "The rental agreement mitigates risk by restricting illegal activities, prohibiting pets and subletting, "
-        "imposing penalties for violations, defining eviction triggers, and requiring the tenant to indemnify the landlord."
+        "The rental agreement mitigates risk by restricting improper use, prohibiting pets and subletting, "
+        "defining eviction conditions, and requiring tenant indemnification."
     )
 
     rent_misc_relevant_chunks = [
@@ -193,18 +193,17 @@ def main():
     )
 
     print("\nMISC RENT ANSWER:")
-    print(markdown.markdown(rent_answer))
+    print(rent_answer)
     print("MISC RENT METRICS:")
     print(rent_metrics)
 
-    # MISCELLANEOUS AGENT – FINANCE DOCUMENT
+    # MISC – FINANCE
 
     finance_misc_query = "What financial risk disclosures or safeguards are included in the statement?"
 
     finance_misc_reference_answer = (
-        "The statement includes risk safeguards through asset allocation diversification, "
-        "performance benchmarking, and disclaimers stating that the data is for educational purposes "
-        "and not investment advice."
+        "The statement includes safeguards through asset diversification, benchmark comparison, "
+        "and disclaimers that the data is for educational purposes and not investment advice."
     )
 
     finance_misc_relevant_chunks = [
@@ -223,17 +222,17 @@ def main():
     )
 
     print("\nMISC FINANCE ANSWER:")
-    print(markdown.markdown(finance_answer))
+    print(finance_answer)
     print("MISC FINANCE METRICS:")
     print(finance_metrics)
 
-    # MISCELLANEOUS AGENT – EDUCATION DOCUMENT
+    # MISC – EDUCATION
 
     education_misc_query = "How do AI guardrails reduce operational and ethical risks?"
 
     education_misc_reference_answer = (
-        "AI guardrails reduce risk by preventing harmful or unethical outputs, protecting personal data, "
-        "ensuring topic adherence, and validating model responses to avoid hallucinations."
+        "AI guardrails reduce risk by preventing harmful content, protecting personal data, "
+        "ensuring topic compliance, and validating outputs to avoid hallucinations."
     )
 
     education_misc_relevant_chunks = [
@@ -252,7 +251,7 @@ def main():
     )
 
     print("\nMISC EDUCATION ANSWER:")
-    print(markdown.markdown(education_answer))
+    print(education_answer)
     print("MISC EDUCATION METRICS:")
     print(education_metrics)
 
