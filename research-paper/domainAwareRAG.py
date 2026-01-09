@@ -128,19 +128,22 @@ def generate_answer_auto(context, query, domain="miscellaneous"):
     domain: "financial", "legal", "educational", "miscellaneous"
     """
     model = genai.GenerativeModel("gemini-2.5-flash")
-
+    temp = 1.0
     if domain.lower() == "financial":
         prompt = build_financial_prompt(context, query)
+        temp = 0.3
     elif domain.lower() == "legal":
         prompt = build_legal_prompt(context, query)
+        temp = 0.5
     elif domain.lower() == "educational":
         prompt = build_education_prompt(context, query)
+        temp = 0.7
     else:
         prompt = build_miscellaneous_prompt(context, query)
 
     response = model.generate_content(
         prompt,
-        generation_config={"temperature": 0.4}
+        generation_config={"temperature": temp, "max_output_tokens": 500}
     )
     return response.text
 
