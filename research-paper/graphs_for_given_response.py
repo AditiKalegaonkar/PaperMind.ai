@@ -44,63 +44,71 @@ MISC EDUCATION METRICS:
 {'retrieval': {'hit_rate': 0, 'mrr': 0, 'precision': 0.0, 'recall': 0.0, 'f1': 0}, 'generation': {'bleu': 0.10406104960841618, 'readability': -15.884999999999962}, 'end_to_end': {'groundedness': 0.8125, 'hallucination_rate': 0.1875}}
 
 """
-
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator, FormatStrFormatter
 
+# ---------------- FONT SETTINGS ----------------
+TITLE_FONTSIZE = 20
+LABEL_FONTSIZE = 16
+TICK_FONTSIZE = 14
+LEGEND_FONTSIZE = 14
+VALUE_FONTSIZE = 16
+
+# ---------------- COLOR PALETTE (NO BLUE) ----------------
+SINGLE_COLORS = ["#E67E22", "#27AE60", "#8E44AD"]
+COMPARE_COLORS = ["#E67E22", "#27AE60"]
+
+# ---------------- DATA ----------------
 LEGAL_NDA_METRICS = {
     "retrieval": {"hit_rate": 0, "mrr": 0, "precision": 0.0, "recall": 0.0, "f1": 0},
-    "generation": {"bleu": 0.02389322649669771, "readability": 8.471236559139811},
-    "end_to_end": {"groundedness": 0.8695652173913043, "hallucination_rate": 0.13043478260869565}
+    "generation": {"bleu": 0.0239, "readability": 8.47},
+    "end_to_end": {"groundedness": 0.87, "hallucination_rate": 0.13}
 }
 
 LEGAL_RENT_METRICS = {
-    "retrieval": {"hit_rate": 1, "mrr": 0, "precision": 0.2, "recall": 0.5, "f1": 0.28571428571428575},
-    "generation": {"bleu": 0.01904256299600657, "readability": -21.11384615384611},
+    "retrieval": {"hit_rate": 1, "mrr": 0, "precision": 0.2, "recall": 0.5, "f1": 0.29},
+    "generation": {"bleu": 0.019, "readability": -21.11},
     "end_to_end": {"groundedness": 1.0, "hallucination_rate": 0.0}
 }
 
 FINANCE_METRICS = {
-    "retrieval": {"hit_rate": 1, "mrr": 0, "precision": 0.2, "recall": 0.3333333333333333, "f1": 0.25},
-    "generation": {"bleu": 1.0, "readability": 59.68214285714288},
-    "end_to_end": {"groundedness": 0.8571428571428571, "hallucination_rate": 0.14285714285714285}
+    "retrieval": {"hit_rate": 1, "mrr": 0, "precision": 0.2, "recall": 0.33, "f1": 0.25},
+    "generation": {"bleu": 1.0, "readability": 59.68},
+    "end_to_end": {"groundedness": 0.86, "hallucination_rate": 0.14}
 }
 
 EDUCATION_METRICS = {
     "retrieval": {"hit_rate": 0, "mrr": 0, "precision": 0.0, "recall": 0.0, "f1": 0},
-    "generation": {"bleu": 0.087593103737711, "readability": 18.857500000000016},
-    "end_to_end": {"groundedness": 0.7777777777777778, "hallucination_rate": 0.2222222222222222}
+    "generation": {"bleu": 0.088, "readability": 18.86},
+    "end_to_end": {"groundedness": 0.78, "hallucination_rate": 0.22}
 }
 
 MISC_NDA_METRICS = {
     "retrieval": {"hit_rate": 0, "mrr": 0, "precision": 0.0, "recall": 0.0, "f1": 0},
-    "generation": {"bleu": 0.09663075814603383, "readability": 12.236428571428604},
-    "end_to_end": {"groundedness": 0.8125, "hallucination_rate": 0.1875}
+    "generation": {"bleu": 0.097, "readability": 12.24},
+    "end_to_end": {"groundedness": 0.81, "hallucination_rate": 0.19}
 }
 
 MISC_RENT_METRICS = {
-    "retrieval": {"hit_rate": 1, "mrr": 0, "precision": 0.1, "recall": 0.25, "f1": 0.14285714285714288},
-    "generation": {"bleu": 0.007975906535156233, "readability": 8.653205128205144},
-    "end_to_end": {"groundedness": 0.7959183673469388, "hallucination_rate": 0.20408163265306123}
+    "retrieval": {"hit_rate": 1, "mrr": 0, "precision": 0.1, "recall": 0.25, "f1": 0.14},
+    "generation": {"bleu": 0.008, "readability": 8.65},
+    "end_to_end": {"groundedness": 0.80, "hallucination_rate": 0.20}
 }
 
 MISC_FINANCE_METRICS = {
-    "retrieval": {"hit_rate": 1, "mrr": 0, "precision": 0.4, "recall": 0.5, "f1": 0.4444444444444445},
-    "generation": {"bleu": 0.052454471410701885, "readability": 38.27669354838713},
-    "end_to_end": {"groundedness": 0.7741935483870968, "hallucination_rate": 0.22580645161290322}
+    "retrieval": {"hit_rate": 1, "mrr": 0, "precision": 0.4, "recall": 0.5, "f1": 0.44},
+    "generation": {"bleu": 0.052, "readability": 38.28},
+    "end_to_end": {"groundedness": 0.77, "hallucination_rate": 0.23}
 }
 
 MISC_EDUCATION_METRICS = {
     "retrieval": {"hit_rate": 0, "mrr": 0, "precision": 0.0, "recall": 0.0, "f1": 0},
-    "generation": {"bleu": 0.10406104960841618, "readability": -15.884999999999962},
-    "end_to_end": {"groundedness": 0.8125, "hallucination_rate": 0.1875}
+    "generation": {"bleu": 0.104, "readability": -15.89},
+    "end_to_end": {"groundedness": 0.81, "hallucination_rate": 0.19}
 }
 
-
-colors_single = ["#77DD77", "#FFB347", "#AEC6CF"]
-colors_compare = ["#FF6961", "#779ECB"]
-metrics_sets = [("Legal NDA", LEGAL_NDA_METRICS), ("Legal Rent", LEGAL_RENT_METRICS), ("Finance", FINANCE_METRICS), ("Education", EDUCATION_METRICS),
-                ("Misc NDA", MISC_NDA_METRICS), ("Misc Rent", MISC_RENT_METRICS), ("Misc Finance", MISC_FINANCE_METRICS), ("Misc Education", MISC_EDUCATION_METRICS)]
+# ---------------- HELPERS ----------------
 
 
 def to_lists(metrics):
@@ -112,76 +120,154 @@ def to_lists(metrics):
             groups.append(c)
     return labels, values, groups
 
+# ---------------- SINGLE DATASET PLOT ----------------
 
-def plot_single_mat(ax, metrics, title):
+
+def plot_single(metrics, title, filename):
     labels, values, groups = to_lists(metrics)
-    x = np.arange(len(labels))
-    width = 0.25
+
+    x = np.arange(len(labels)) * 1.5
+    width = 0.22
     offsets = [-width, 0, width]
+
     group_set = list(sorted(set(groups)))
+
+    plt.figure(figsize=(17, 8))
+
     for i, g in enumerate(group_set):
         idx = [j for j, grp in enumerate(groups) if grp == g]
-        ax.bar(x[idx] + offsets[i], [values[j] for j in idx], width,
-               label=g, color=colors_single[i], edgecolor="black")
-        for j in idx:
-            ax.text(x[j] + offsets[i], values[j] + 0.01*np.sign(values[j]),
-                    f"{values[j]:.2f}", ha="center", va="bottom" if values[j] >= 0 else "top", fontsize=8)
-    ax.set_xticks(x)
-    ax.set_xticklabels(labels, rotation=45, ha="right")
-    ax.set_title(title, color="black")
-    ax.legend()
-    ax.grid(axis="y", linestyle="--", alpha=0.7)
+
+        bars = plt.bar(x[idx] + offsets[i],
+                       [values[j] for j in idx],
+                       width,
+                       label=g.replace("_", " ").title(),
+                       color=SINGLE_COLORS[i],
+                       edgecolor="black")
+
+        for k, bar in enumerate(bars):
+            h = bar.get_height()
+            offset = 0.05 + (k % 3) * 0.08
+            plt.text(bar.get_x() + bar.get_width()/2,
+                     h + offset,
+                     f"{h:.2f}",
+                     ha="center", va="bottom",
+                     fontsize=VALUE_FONTSIZE)
+
+    plt.xticks(x, labels, rotation=30, ha="right", fontsize=TICK_FONTSIZE)
+    plt.yticks(fontsize=TICK_FONTSIZE)
+
+    ax = plt.gca()
+    ax.yaxis.set_major_locator(MaxNLocator(5))
+    ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+
+    plt.title(title, fontsize=TITLE_FONTSIZE)
+    plt.xlabel("Metrics", fontsize=LABEL_FONTSIZE)
+    plt.ylabel("Score", fontsize=LABEL_FONTSIZE)
+    plt.legend(fontsize=LEGEND_FONTSIZE)
+    plt.grid(axis="y", linestyle="--", alpha=0.7)
+
+    plt.ylim(bottom=0)
+    plt.tight_layout()
+    plt.savefig(filename, dpi=300)
+    plt.close()
 
 
-fig, axs = plt.subplots(2, 2, figsize=(14, 10))
-for ax, (title, metrics) in zip(axs.flatten(), metrics_sets[:4]):
-    plot_single_mat(ax, metrics, title)
-plt.tight_layout()
-plt.savefig("metrics_part1_mat.png", dpi=300)
-plt.close()
-
-fig, axs = plt.subplots(2, 2, figsize=(14, 10))
-for ax, (title, metrics) in zip(axs.flatten(), metrics_sets[4:]):
-    plot_single_mat(ax, metrics, title)
-plt.tight_layout()
-plt.savefig("metrics_part2_mat.png", dpi=300)
-plt.close()
-
-
-def plot_compare_mat_all(ax, m1, m2, n1, n2, title):
+def plot_compare(m1, m2, n1, n2, title, filename):
     labels, v1, v2 = [], [], []
+
     for c in m1:
         for m in m1[c]:
-            labels.append(f"{c}-{m}")
+            labels.append(m)
             v1.append(m1[c][m])
             v2.append(m2[c].get(m, 0))
-    x = np.arange(len(labels))
-    width = 0.35
-    bars1 = ax.bar(x - width/2, v1, width, label=n1,
-                   color=colors_compare[0], edgecolor="black")
-    bars2 = ax.bar(x + width/2, v2, width, label=n2,
-                   color=colors_compare[1], edgecolor="black")
-    for i in range(len(x)):
-        ax.text(x[i] - width/2, v1[i] + 0.01*np.sign(v1[i]),
-                f"{v1[i]:.2f}", ha="center", va="bottom" if v1[i] >= 0 else "top", fontsize=8)
-        ax.text(x[i] + width/2, v2[i] + 0.01*np.sign(v2[i]),
-                f"{v2[i]:.2f}", ha="center", va="bottom" if v2[i] >= 0 else "top", fontsize=8)
-    ax.set_xticks(x)
-    ax.set_xticklabels(labels, rotation=45, ha="right")
-    ax.set_title(title, color="black")
-    ax.legend()
-    ax.grid(axis="y", linestyle="--", alpha=0.7)
+
+    x = np.arange(len(labels)) * 1.6
+    width = 0.30
+
+    plt.figure(figsize=(18, 8))
+
+    bars1 = plt.bar(x - width/2, v1, width,
+                    label=n1, color=COMPARE_COLORS[0], edgecolor="black")
+    bars2 = plt.bar(x + width/2, v2, width,
+                    label=n2, color=COMPARE_COLORS[1], edgecolor="black")
+
+    # ---- PER-METRIC COLLISION FREE LABEL PLACEMENT ----
+    for i in range(len(labels)):
+        b1 = bars1[i]
+        b2 = bars2[i]
+
+        h1 = b1.get_height()
+        h2 = b2.get_height()
+
+        # base offsets
+        off1 = 0.6
+        off2 = 0.6
+
+        # if close, separate vertically
+        if abs(h1 - h2) < 1.0:
+            off2 = 1.8
+
+        # label 1
+        y1 = h1 + off1 if h1 >= 0 else h1 - off1
+        plt.text(b1.get_x() + b1.get_width()/2, y1,
+                 f"{h1:.2f}", ha="center",
+                 va="bottom" if h1 >= 0 else "top",
+                 fontsize=VALUE_FONTSIZE)
+
+        # label 2
+        y2 = h2 + off2 if h2 >= 0 else h2 - off2
+        plt.text(b2.get_x() + b2.get_width()/2, y2,
+                 f"{h2:.2f}", ha="center",
+                 va="bottom" if h2 >= 0 else "top",
+                 fontsize=VALUE_FONTSIZE)
+
+    plt.xticks(x, labels, rotation=30, ha="right", fontsize=TICK_FONTSIZE)
+    plt.yticks(fontsize=TICK_FONTSIZE)
+
+    ax = plt.gca()
+    ax.yaxis.set_major_locator(MaxNLocator(6))
+    ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+
+    plt.title(title, fontsize=TITLE_FONTSIZE)
+    plt.xlabel("Metrics", fontsize=LABEL_FONTSIZE)
+    plt.ylabel("Score", fontsize=LABEL_FONTSIZE)
+    plt.legend(fontsize=LEGEND_FONTSIZE)
+    plt.grid(axis="y", linestyle="--", alpha=0.7)
+
+    ymin = min(v1 + v2) - 3
+    ymax = max(v1 + v2) + 3
+    plt.ylim(ymin, ymax)
+
+    plt.tight_layout()
+    plt.savefig(filename, dpi=300)
+    plt.close()
 
 
-fig, axs = plt.subplots(2, 2, figsize=(16, 10))
-plot_compare_mat_all(axs[0, 0], LEGAL_NDA_METRICS,
-                     MISC_NDA_METRICS, "Legal NDA", "Misc NDA", "NDA Comparison")
-plot_compare_mat_all(axs[0, 1], LEGAL_RENT_METRICS, MISC_RENT_METRICS,
-                     "Legal Rent", "Misc Rent", "Rent Comparison")
-plot_compare_mat_all(axs[1, 0], FINANCE_METRICS, MISC_FINANCE_METRICS,
-                     "Finance", "Misc Finance", "Finance Comparison")
-plot_compare_mat_all(axs[1, 1], EDUCATION_METRICS, MISC_EDUCATION_METRICS,
-                     "Education", "Misc Education", "Education Comparison")
-plt.tight_layout()
-plt.savefig("metrics_full_comparison.png", dpi=300)
-plt.close()
+# ---------------- GENERATE ALL SINGLE GRAPHS ----------------
+plot_single(LEGAL_NDA_METRICS, "Legal NDA Metrics", "Legal_NDA_metrics.png")
+plot_single(LEGAL_RENT_METRICS, "Legal Rent Metrics", "Legal_Rent_metrics.png")
+plot_single(FINANCE_METRICS, "Finance Metrics", "Finance_metrics.png")
+plot_single(EDUCATION_METRICS, "Education Metrics", "Education_metrics.png")
+plot_single(MISC_NDA_METRICS, "Misc NDA Metrics", "Misc_NDA_metrics.png")
+plot_single(MISC_RENT_METRICS, "Misc Rent Metrics", "Misc_Rent_metrics.png")
+plot_single(MISC_FINANCE_METRICS, "Misc Finance Metrics",
+            "Misc_Finance_metrics.png")
+plot_single(MISC_EDUCATION_METRICS, "Misc Education Metrics",
+            "Misc_Education_metrics.png")
+
+# ---------------- GENERATE COMPARISON GRAPHS ----------------
+plot_compare(LEGAL_NDA_METRICS, MISC_NDA_METRICS,
+             "Legal NDA", "Misc NDA",
+             "NDA Comparison", "NDA_comparison.png")
+
+plot_compare(LEGAL_RENT_METRICS, MISC_RENT_METRICS,
+             "Legal Rent", "Misc Rent",
+             "Rent Comparison", "Rent_comparison.png")
+
+plot_compare(FINANCE_METRICS, MISC_FINANCE_METRICS,
+             "Finance", "Misc Finance",
+             "Finance Comparison", "Finance_comparison.png")
+
+plot_compare(EDUCATION_METRICS, MISC_EDUCATION_METRICS,
+             "Education", "Misc Education",
+             "Education Comparison", "Education_comparison.png")
