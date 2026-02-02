@@ -27,18 +27,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator, FormatStrFormatter
 
-# ---------------- FONT SETTINGS ----------------
-TITLE_FONTSIZE = 20
-LABEL_FONTSIZE = 16
-TICK_FONTSIZE = 14
-LEGEND_FONTSIZE = 14
-VALUE_FONTSIZE = 16
+# ===================== GLOBAL VISUAL SETTINGS =====================
 
-# ---------------- COLOR PALETTE (NO BLUE) ----------------
+BAR_THICKNESS = 0.8
+FONT_PER_BAR = 55
+
 SINGLE_COLORS = ["#E67E22", "#27AE60", "#8E44AD"]
-COMPARE_COLORS = ["#E67E22", "#27AE60"]
 
-# ---------------- DATA ----------------
+# ===================== DATA =====================
 
 LEGAL_NDA_METRICS = {
     "retrieval": {"hit_rate": 0, "mrr": 0},
@@ -88,7 +84,8 @@ MISC_EDUCATION_METRICS = {
     "end_to_end": {"groundedness": 0.81, "hallucination_rate": 0.19}
 }
 
-# ---------------- HELPERS ----------------
+# ===================== HELPERS =====================
+
 
 def to_lists(metrics):
     labels, values, groups = [], [], []
@@ -100,197 +97,129 @@ def to_lists(metrics):
     return labels, values, groups
 
 
-# ---------------- SINGLE DATASET PLOT ----------------
+# ===================== HORIZONTAL SINGLE GRAPH =====================
 
 def plot_single(metrics, title, filename):
+
     labels, values, groups = to_lists(metrics)
-
-    x = np.arange(len(labels)) * 1.5
-    width = 0.22
-    offsets = [-width, 0, width]
-
     group_set = list(sorted(set(groups)))
 
-    plt.figure(figsize=(17, 8))
+    # Increase spacing between metric groups
+    base_y = np.arange(len(labels)) * 5.5
+    # Adjust offset to prevent overlap
+    offsets = np.linspace(-1.2, 1.2, len(group_set))
+
+    # Adjusted figure size for better proportions with larger fonts
+    fig, ax = plt.subplots(figsize=(36, 24))
+
+    fs = int(BAR_THICKNESS * FONT_PER_BAR)
+
+    vmax = max(values)
+    vmin = min(values)
+    span = vmax - vmin if vmax != vmin else 1
+
+    # Increased text gap for better spacing
+    text_gap = span * 0.03
 
     for i, g in enumerate(group_set):
-        idx = [j for j, grp in enumerate(groups) if grp == g]
 
-        bars = plt.bar(
-            x[idx] + offsets[i],
+        idx = [j for j, grp in enumerate(groups) if grp == g]
+        y = base_y[idx] + offsets[i]
+
+        bars = ax.barh(
+            y,
             [values[j] for j in idx],
-            width,
-            label=g.replace("_", " ").title(),
+            height=BAR_THICKNESS,
             color=SINGLE_COLORS[i],
-            edgecolor="black"
+            edgecolor="black",
+            linewidth=1.5,
+            zorder=3
         )
 
-        for k, bar in enumerate(bars):
-            h = bar.get_height()
-            offset = 0.05 + (k % 3) * 0.08
-            plt.text(
-                bar.get_x() + bar.get_width() / 2,
-                h + offset,
-                f"{h:.2f}",
-                ha="center",
-                va="bottom",
-                fontsize=VALUE_FONTSIZE
+        for bar in bars:
+            w = bar.get_width()
+
+            # Adjusted positioning to prevent overlap
+            if w >= 0:
+                x = w + text_gap
+                ha = "left"
+            else:
+                x = w - text_gap
+                ha = "right"
+
+            ax.text(
+                x,
+                bar.get_y() + bar.get_height() / 2,
+                f"{w:.2f}",
+                va="center",
+                ha=ha,
+                fontsize=fs,
+                zorder=4,
+                clip_on=False
             )
 
-    plt.xticks(x, labels, rotation=30, ha="right", fontsize=TICK_FONTSIZE)
-    plt.yticks(fontsize=TICK_FONTSIZE)
+    ax.set_yticks(base_y)
+    ax.set_yticklabels(labels, fontsize=fs)
+    ax.tick_params(axis="x", labelsize=fs)
+    ax.tick_params(axis="y", which='major', pad=15)
 
-    ax = plt.gca()
-    ax.yaxis.set_major_locator(MaxNLocator(5))
-    ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+    ax.xaxis.set_major_locator(MaxNLocator(6))
+    ax.xaxis.set_major_formatter(FormatStrFormatter("%.2f"))
 
-    plt.title(title, fontsize=TITLE_FONTSIZE)
-    plt.xlabel("Metrics", fontsize=LABEL_FONTSIZE)
-    plt.ylabel("Score", fontsize=LABEL_FONTSIZE)
-    plt.legend(fontsize=LEGEND_FONTSIZE)
-    plt.grid(axis="y", linestyle="--", alpha=0.7)
+    ax.set_title(title, fontsize=int(fs * 1.4), pad=35, fontweight='bold')
+    ax.set_xlabel("Score", fontsize=int(fs * 1.1),
+                  labelpad=25, fontweight='semibold')
+    ax.set_ylabel("Metrics", fontsize=int(fs * 1.1),
+                  labelpad=25, fontweight='semibold')
 
-    plt.ylim(bottom=0)
-    plt.tight_layout()
-    plt.savefig(filename, dpi=300)
-    plt.close()
+    ax.grid(axis="x", linestyle="--", alpha=0.4, zorder=0, linewidth=1.2)
 
+    # Adjusted margins to ensure all text is visible and graph is connected at left
+    # If all values are positive, start from 0; otherwise start from min value
+    left = min(0, vmin) - span * 0.05 if vmin < 0 else 0
+    right = vmax + span * 0.15
+    ax.set_xlim(left, right)
 
-# ---------------- COMPARISON PLOT ----------------
+    # Adjust subplot to prevent label cutoff
+    fig.subplots_adjust(left=0.25, right=0.95, top=0.95, bottom=0.08)
 
-def plot_compare(m1, m2, n1, n2, title, filename):
-    labels, v1, v2 = [], [], []
+    # Improve spine appearance
+    for spine in ax.spines.values():
+        spine.set_linewidth(1.5)
+        spine.set_edgecolor('#333333')
 
-    for c in m1:
-        for m in m1[c]:
-            labels.append(m)
-            v1.append(m1[c][m])
-            v2.append(m2[c].get(m, 0))
-
-    x = np.arange(len(labels)) * 1.6
-    width = 0.30
-
-    plt.figure(figsize=(18, 8))
-
-    bars1 = plt.bar(
-        x - width / 2,
-        v1,
-        width,
-        label=n1,
-        color=COMPARE_COLORS[0],
-        edgecolor="black"
-    )
-
-    bars2 = plt.bar(
-        x + width / 2,
-        v2,
-        width,
-        label=n2,
-        color=COMPARE_COLORS[1],
-        edgecolor="black"
-    )
-
-    for i in range(len(labels)):
-        b1 = bars1[i]
-        b2 = bars2[i]
-
-        h1 = b1.get_height()
-        h2 = b2.get_height()
-
-        off1 = 0.6
-        off2 = 0.6
-
-        if abs(h1 - h2) < 1.0:
-            off2 = 1.8
-
-        y1 = h1 + off1 if h1 >= 0 else h1 - off1
-        y2 = h2 + off2 if h2 >= 0 else h2 - off2
-
-        plt.text(
-            b1.get_x() + b1.get_width() / 2,
-            y1,
-            f"{h1:.2f}",
-            ha="center",
-            va="bottom" if h1 >= 0 else "top",
-            fontsize=VALUE_FONTSIZE
-        )
-
-        plt.text(
-            b2.get_x() + b2.get_width() / 2,
-            y2,
-            f"{h2:.2f}",
-            ha="center",
-            va="bottom" if h2 >= 0 else "top",
-            fontsize=VALUE_FONTSIZE
-        )
-
-    plt.xticks(x, labels, rotation=30, ha="right", fontsize=TICK_FONTSIZE)
-    plt.yticks(fontsize=TICK_FONTSIZE)
-
-    ax = plt.gca()
-    ax.yaxis.set_major_locator(MaxNLocator(6))
-    ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
-
-    plt.title(title, fontsize=TITLE_FONTSIZE)
-    plt.xlabel("Metrics", fontsize=LABEL_FONTSIZE)
-    plt.ylabel("Score", fontsize=LABEL_FONTSIZE)
-    plt.legend(fontsize=LEGEND_FONTSIZE)
-    plt.grid(axis="y", linestyle="--", alpha=0.7)
-
-    ymin = min(v1 + v2) - 3
-    ymax = max(v1 + v2) + 3
-    plt.ylim(ymin, ymax)
-
-    plt.tight_layout()
-    plt.savefig(filename, dpi=300)
-    plt.close()
+    fig.savefig(filename, dpi=200, bbox_inches='tight', facecolor='white')
+    plt.close(fig)
 
 
-# ---------------- GENERATE ALL SINGLE GRAPHS ----------------
+# ===================== GENERATE ALL SINGLE GRAPHS =====================
+
+print("Generating improved visualizations...")
 
 plot_single(LEGAL_NDA_METRICS, "Legal NDA Metrics", "Legal_NDA_metrics.png")
+print("✓ Legal NDA Metrics")
+
 plot_single(LEGAL_RENT_METRICS, "Legal Rent Metrics", "Legal_Rent_metrics.png")
+print("✓ Legal Rent Metrics")
+
 plot_single(FINANCE_METRICS, "Finance Metrics", "Finance_metrics.png")
+print("✓ Finance Metrics")
+
 plot_single(EDUCATION_METRICS, "Education Metrics", "Education_metrics.png")
+print("✓ Education Metrics")
+
 plot_single(MISC_NDA_METRICS, "Misc NDA Metrics", "Misc_NDA_metrics.png")
+print("✓ Misc NDA Metrics")
+
 plot_single(MISC_RENT_METRICS, "Misc Rent Metrics", "Misc_Rent_metrics.png")
-plot_single(MISC_FINANCE_METRICS, "Misc Finance Metrics", "Misc_Finance_metrics.png")
-plot_single(MISC_EDUCATION_METRICS, "Misc Education Metrics", "Misc_Education_metrics.png")
+print("✓ Misc Rent Metrics")
 
-# ---------------- GENERATE COMPARISON GRAPHS ----------------
+plot_single(MISC_FINANCE_METRICS, "Misc Finance Metrics",
+            "Misc_Finance_metrics.png")
+print("✓ Misc Finance Metrics")
 
-plot_compare(
-    LEGAL_NDA_METRICS,
-    MISC_NDA_METRICS,
-    "Legal NDA",
-    "Misc NDA",
-    "NDA Comparison",
-    "NDA_comparison.png"
-)
+plot_single(MISC_EDUCATION_METRICS, "Misc Education Metrics",
+            "Misc_Education_metrics.png")
+print("✓ Misc Education Metrics")
 
-plot_compare(
-    LEGAL_RENT_METRICS,
-    MISC_RENT_METRICS,
-    "Legal Rent",
-    "Misc Rent",
-    "Rent Comparison",
-    "Rent_comparison.png"
-)
-
-plot_compare(
-    FINANCE_METRICS,
-    MISC_FINANCE_METRICS,
-    "Finance",
-    "Misc Finance",
-    "Finance Comparison",
-    "Finance_comparison.png"
-)
-
-plot_compare(
-    EDUCATION_METRICS,
-    MISC_EDUCATION_METRICS,
-    "Education",
-    "Misc Education",
-    "Education Comparison",
-    "Education_comparison.png"
-)
+print("\nAll visualizations generated successfully!")
