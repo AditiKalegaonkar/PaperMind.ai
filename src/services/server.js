@@ -94,6 +94,7 @@ app.use(passport.session());
 
 /* ---------------- DATABASE ---------------- */
 
+// NOTE: This uses the database name defined in the URI (e.g., .../ProductionDB)
 mongoose
   .connect(process.env.MONGO_URI)
   .then((conn) => {
@@ -214,7 +215,6 @@ app.post("/api/chat", upload.array("files", 5), async (req, res) => {
   }
 });
 
-// NEW ROUTE: Get Latest Session (Proxies to FastAPI)
 app.get("/api/chat/latest", async (req, res) => {
   try {
     const user = req.user || req.session.user;
@@ -224,7 +224,7 @@ app.get("/api/chat/latest", async (req, res) => {
     res.json(r.data);
   } catch (err) {
     console.error("Latest chat error:", err.response?.data || err.message);
-    res.json({ sessionId: null, messages: [] }); // Safe fallback
+    res.json({ sessionId: null, messages: [] });
   }
 });
 
