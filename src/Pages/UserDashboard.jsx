@@ -7,13 +7,13 @@ const API_URL = 'http://localhost:5000';
 const safeJsonParse = (jsonString, fallback = {}) => {
   try {
     return JSON.parse(jsonString);
-  } catch (error) {
-    console.error('JSON parse error:', error);
+  } catch {
     return fallback;
   }
 };
 
-// ---------------- Icons ----------------
+/* ---------------- Icons ---------------- */
+
 const PaperClipIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M21.44 11.05l-9.19 9.19a5 5 0 01-7.07-7.07l9.19-9.19a3 3 0 014.24 4.24l-9.2 9.19a1 1 0 01-1.42-1.42l8.49-8.48"/>
@@ -56,252 +56,265 @@ const MenuIcon = () => (
   </svg>
 );
 
-// ---------- Render bot analysis + plots ----------
-const BotMessageContent = ({ analysisSteps, plotCode }) => {
-  const plotContainerRef = useRef(null);
+const CloseIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="6" x2="6" y2="18" />
+    <line x1="6" y1="6" x2="18" y2="18" />
+  </svg>
+);
 
-  useEffect(() => {
-    if (plotCode && plotContainerRef.current) {
-      plotContainerRef.current.innerHTML = '<p>Chart visualization would go here</p>';
-    }
-  }, [plotCode]);
+const FileIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
+    <polyline points="13 2 13 9 20 9"/>
+  </svg>
+);
+
+/* ---------- Bot render ---------- */
+
+const BotMessageContent = ({ answer }) => (
+  <pre className="prose-output">{answer}</pre>
+);
+
+/* ---------- File Preview Component ---------- */
+
+const FilePreview = ({ file, onRemove }) => {
+  const formatFileSize = (bytes) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
 
   return (
-    <div className="bot-message-container">
-      {analysisSteps?.map((step, index) => (
-        <div key={index} className="analysis-step">
-          <strong>Output from: {step.agent}</strong>
-          <pre className="prose-output">{step.text}</pre>
-        </div>
-      ))}
-      {plotCode && <div ref={plotContainerRef} className="plot-container"></div>}
+    <div className="file-preview-item">
+      <div className="file-preview-icon">
+        <FileIcon />
+      </div>
+      <div className="file-preview-info">
+        <span className="file-preview-name">{file.name}</span>
+        <span className="file-preview-size">{formatFileSize(file.size)}</span>
+      </div>
+      <button 
+        className="file-preview-remove" 
+        onClick={onRemove}
+        type="button"
+      >
+        <CloseIcon />
+      </button>
     </div>
   );
 };
 
-// ======================== MAIN COMPONENT =============================
+/* ======================== MAIN ============================= */
 
 function UserDashboard() {
-  const [chats, setChats] = useState([]);
-  const [activeChatId, setActiveChatId] = useState(null);
+
+  const [sessions, setSessions] = useState([]);
+  const [activeSessionId, setActiveSessionId] = useState(null);
+  const [messages, setMessages] = useState([]);
+
   const [userInput, setUserInput] = useState('');
-  const [selectedFile, setSelectedFile] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [user, setUser] = useState(null);
 
-  const fileInputRef = useRef(null);
+  const [selectedAgent, setSelectedAgent] = useState('general');
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+
   const chatEndRef = useRef(null);
+  const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
-  // ---------------- Fetch USER ----------------
+  /* ---------------- USER ---------------- */
+
   useEffect(() => {
-    const fetchUserData = async () => {
+    const loadUser = async () => {
       try {
-        const res = await fetch(`${API_URL}/auth/user`, { credentials: 'include' });
-        const data = await res.json();
+        const r = await fetch(`${API_URL}/auth/user`, { credentials: 'include' });
 
-        if (!data.user) return navigate('/login');
+        if (!r.ok) {
+          navigate('/login');
+          return;
+        }
 
-        setUser(data.user);
+        const d = await r.json();
 
-        // Now load chats from separate DB
-        fetchChats(data.user.id);
-      } catch (err) {
-        console.error('Fetch user data error:', err);
+        if (!d.user) {
+          navigate('/login');
+          return;
+        }
+
+        setUser(d.user);
+        loadSessions();
+      } catch {
         navigate('/login');
       }
     };
 
-    fetchUserData();
+    loadUser();
   }, [navigate]);
 
+  /* ---------------- SESSIONS ---------------- */
 
-  // ---------------- Fetch CHATS FROM CHAT DATABASE ----------------
-  const fetchChats = async (userId) => {
+  const loadSessions = async () => {
     try {
-      const res = await fetch(`${API_URL}/chats/${userId}`, { credentials: 'include' });
+      const r = await fetch(`${API_URL}/api/sessions`, { credentials: 'include' });
+      const d = await r.json();
 
-      if (!res.ok) {
-        console.warn("No chats found or chat DB unreachable!");
-        setChats([]);
-        return;
+      const list = Array.isArray(d?.sessions)
+        ? d.sessions
+        : Array.isArray(d)
+          ? d
+          : [];
+
+      setSessions(list);
+
+      if (list.length > 0) {
+        setActiveSessionId(list[0].sessionId);
       }
 
-      const dbData = await res.json();
-      const chatList = dbData.chats || [];
-
-      const formattedChats = chatList.map(chat => {
-        const messages = [];
-
-        chat.sessions?.forEach(session => {
-          session.messages?.forEach(msg => {
-            messages.push({
-              role: "user",
-              content: msg.message,
-              timestamp: msg.timestamp
-            });
-
-            const botResponse = safeJsonParse(msg.answer);
-            messages.push({
-              role: "bot",
-              analysisSteps: botResponse.analysis_steps || [],
-              plotCode: botResponse.code || null,
-              timestamp: msg.timestamp
-            });
-          });
-        });
-
-        return {
-          id: chat._id,
-          title: messages[0]?.content || "New Chat",
-          messages,
-          createdAt: chat.createdAt
-        };
-      });
-
-      setChats(formattedChats);
-      if (formattedChats.length > 0) {
-        setActiveChatId(formattedChats[0].id);
-      }
-    } catch (err) {
-      console.error("Chat fetch error:", err);
-      setChats([]);
+    } catch {
+      setSessions([]);
     }
   };
 
+  /* ---------------- HISTORY ---------------- */
 
-  // --------- Auto-scroll ---------
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chats, activeChatId, isLoading]);
+    if (!activeSessionId) return;
 
+    const loadHistory = async () => {
+      const r = await fetch(
+        `${API_URL}/api/chat/${activeSessionId}`,
+        { credentials: 'include' }
+      );
 
-  // Active Chat Memoized
-  const activeChat = useMemo(() =>
-    chats.find(chat => chat.id === activeChatId),
-    [chats, activeChatId]
-  );
+      const d = await r.json();
 
+      const msgs = (d.messages || []).flatMap(m => ([
+        { role: 'user', content: m.message, timestamp: m.timestamp, files: m.files },
+        { role: 'bot', content: m.answer, timestamp: m.timestamp }
+      ]));
 
-  // ---------- Create a new chat -----------
-  const createNewChat = () => {
-    const newChatId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-    const newChat = {
-      id: newChatId,
-      title: "New Chat",
-      messages: [],
-      createdAt: new Date().toISOString()
+      setMessages(msgs);
     };
 
-    setChats(prev => [newChat, ...prev]);
-    setActiveChatId(newChatId);
-    setSelectedFile(null);
-    setUserInput('');
+    loadHistory();
+  }, [activeSessionId]);
+
+  /* --------- Auto-scroll --------- */
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isLoading]);
+
+  /* ---------- New chat ---------- */
+
+  const createNewChat = () => {
+    setActiveSessionId(null);
+    setMessages([]);
+    setUploadedFiles([]);
   };
 
+  /* ---------- File handling ---------- */
 
-  // ---------- Handle file input ----------
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file && file.type !== 'application/pdf') {
-      alert('Please select a PDF only.');
-      return;
-    }
-    setSelectedFile(file);
+  const handleFileSelect = (e) => {
+    const files = Array.from(e.target.files);
+    setUploadedFiles(prev => [...prev, ...files]);
+    // Reset input to allow selecting the same file again
+    e.target.value = '';
   };
 
+  const removeFile = (index) => {
+    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+  };
 
-  // ---------- Send message ----------
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
+  };
+
+  /* ---------- Send ---------- */
+
   const handleSubmit = async () => {
-    if (!userInput.trim() || !selectedFile || isLoading) return;
+    if ((!userInput.trim() && uploadedFiles.length === 0) || isLoading) return;
 
     setIsLoading(true);
 
-    const userMessage = {
+    const userMsg = {
       role: 'user',
       content: userInput,
-      file: selectedFile.name,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      files: uploadedFiles.map(f => ({ name: f.name, size: f.size }))
     };
 
-    // Add user message
-    setChats(prev =>
-      prev.map(chat =>
-        chat.id === activeChatId
-          ? { ...chat, messages: [...chat.messages, userMessage] }
-          : chat
-      )
-    );
-
-    const formData = new FormData();
-    formData.append('document', selectedFile);
-    formData.append('query', userInput);
-    formData.append('session_id', activeChatId);
-    formData.append('username', user?.firstName || 'User');
-
-    setUserInput('');
-    setSelectedFile(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    setMessages(prev => [...prev, userMsg]);
 
     try {
-      const res = await fetch(`${API_URL}/receive`, {
-        method: 'POST',
-        body: formData,
-        credentials: 'include'
+      const formData = new FormData();
+      formData.append('agent', selectedAgent);
+      formData.append('question', userInput);
+      
+      if (activeSessionId) {
+        formData.append('sessionId', activeSessionId);
+      }
+
+      // Append files
+      uploadedFiles.forEach(file => {
+        formData.append('files', file);
       });
 
-      const data = await res.json();
+      const r = await fetch(`${API_URL}/api/chat`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+      });
 
-      const botMessage = {
+      const d = await r.json();
+
+      if (!activeSessionId) {
+        setActiveSessionId(d.sessionId);
+        loadSessions();
+      }
+
+      const botMsg = {
         role: 'bot',
-        analysisSteps: data.analysis_steps || [],
-        plotCode: data.code || null,
-        timestamp: new Date().toISOString()
+        content: d.answer,
+        timestamp: d.timestamp
       };
 
-      setChats(prev =>
-        prev.map(chat =>
-          chat.id === activeChatId
-            ? { ...chat, messages: [...chat.messages, botMessage] }
-            : chat
-        )
-      );
+      setMessages(prev => [...prev, botMsg]);
 
     } catch (err) {
-      console.error('Submit error:', err);
-
-      const errMessage = {
-        role: 'bot',
-        analysisSteps: [{ agent: 'Error', text: `Analysis failed: ${err.message}` }],
-        plotCode: null
-      };
-
-      setChats(prev =>
-        prev.map(chat =>
-          chat.id === activeChatId
-            ? { ...chat, messages: [...chat.messages, errMessage] }
-            : chat
-        )
-      );
+      setMessages(prev => [
+        ...prev,
+        { role: 'bot', content: 'Chat failed', timestamp: new Date().toISOString() }
+      ]);
     }
 
+    setUserInput('');
+    setUploadedFiles([]);
     setIsLoading(false);
   };
 
+  /* ---------- Logout ---------- */
 
-  // ---------- Logout ----------
   const handleLogout = async () => {
-    await fetch(`${API_URL}/auth/logout`, { method: 'POST', credentials: 'include' });
+    await fetch(`${API_URL}/auth/logout`, { credentials: 'include' });
     navigate('/login');
   };
 
+  const activeSession = useMemo(
+    () => Array.isArray(sessions)
+      ? sessions.find(s => s.sessionId === activeSessionId)
+      : undefined,
+    [sessions, activeSessionId]
+  );
 
-  // =================== JSX =======================
+  /* =================== JSX ======================= */
+
   return (
     <div className="container-d quicksand">
-      {/* -------- SIDEBAR -------- */}
+
       <div className={`sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
 
         <div className="sidebar-header">
@@ -312,15 +325,14 @@ function UserDashboard() {
         </div>
 
         <div className="chat-list">
-          {chats.map(chat => (
+          {Array.isArray(sessions) && sessions.map(s => (
             <div
-              key={chat.id}
-              className={`chat-item ${activeChatId === chat.id ? 'active' : ''}`}
-              onClick={() => setActiveChatId(chat.id)}
+              key={s.sessionId}
+              className={`chat-item ${activeSessionId === s.sessionId ? 'active' : ''}`}
+              onClick={() => setActiveSessionId(s.sessionId)}
             >
-              <div className="chat-title">{chat.title}</div>
-              <div className="chat-preview">
-                {chat.messages[0]?.content?.substring(0, 50) || "No messages"}...
+              <div className="chat-title">
+                {s.sessionId}
               </div>
             </div>
           ))}
@@ -336,7 +348,6 @@ function UserDashboard() {
 
       </div>
 
-      {/* -------- MAIN CHAT AREA -------- */}
       <div className="main-chat">
 
         <div className="chat-header">
@@ -347,32 +358,35 @@ function UserDashboard() {
             <MenuIcon />
           </button>
 
-          <h3>{activeChat?.title || 'Select a Chat'}</h3>
+          <h3>{activeSession?.sessionId || 'New chat'}</h3>
         </div>
 
         <div className="chat-messages">
 
-          {activeChat?.messages.map((msg, i) => (
+          {messages.map((msg, i) => (
             <div key={i} className={`message ${msg.role}`}>
               <div className="message-icon">
                 {msg.role === 'user' ? <UserIcon /> : <BotIcon />}
               </div>
 
               <div className="message-content">
-                {msg.role === 'user'
-                  ? (
-                    <>
-                      <p>{msg.content}</p>
-                      {msg.file && <small>Attached: {msg.file}</small>}
-                    </>
-                  )
-                  : (
-                    <BotMessageContent
-                      analysisSteps={msg.analysisSteps}
-                      plotCode={msg.plotCode}
-                    />
-                  )
-                }
+                {msg.role === 'user' ? (
+                  <>
+                    <p>{msg.content}</p>
+                    {msg.files && msg.files.length > 0 && (
+                      <div className="message-files">
+                        {msg.files.map((file, idx) => (
+                          <div key={idx} className="message-file-tag">
+                            <FileIcon />
+                            <span>{file.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <BotMessageContent answer={msg.content} />
+                )}
               </div>
             </div>
           ))}
@@ -381,31 +395,56 @@ function UserDashboard() {
             <div className="message bot">
               <div className="message-icon"><BotIcon /></div>
               <div className="message-content">
-                <div className="loading">Analyzing document...</div>
+                <div className="loading">Thinking...</div>
               </div>
             </div>
           )}
 
           <div ref={chatEndRef} />
-
         </div>
 
-        {/* -------- INPUT AREA -------- */}
+        <div className="agent-selector">
+          {['general', 'legal', 'education', 'finance'].map(a => (
+            <button
+              key={a}
+              className={selectedAgent === a ? 'agent-btn active' : 'agent-btn'}
+              onClick={() => setSelectedAgent(a)}
+              disabled={isLoading}
+            >
+              {a}
+            </button>
+          ))}
+        </div>
+
+        {uploadedFiles.length > 0 && (
+          <div className="file-preview-container">
+            {uploadedFiles.map((file, index) => (
+              <FilePreview 
+                key={index} 
+                file={file} 
+                onRemove={() => removeFile(index)}
+              />
+            ))}
+          </div>
+        )}
+
         <div className="input-area">
           <div className="input-container">
 
             <input
               type="file"
               ref={fileInputRef}
-              onChange={handleFileChange}
-              accept=".pdf"
+              onChange={handleFileSelect}
               style={{ display: 'none' }}
+              multiple
+              accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg"
             />
 
             <button
-              onClick={() => fileInputRef.current?.click()}
-              className="file-btn"
+              onClick={triggerFileInput}
+              className="attach-btn"
               disabled={isLoading}
+              title="Attach files"
             >
               <PaperClipIcon />
             </button>
@@ -414,8 +453,8 @@ function UserDashboard() {
               type="text"
               value={userInput}
               onChange={(e) => setUserInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey ? handleSubmit() : null}
-              placeholder={selectedFile ? `Ask about ${selectedFile.name}...` : "Upload a PDF and ask a question..."}
+              onKeyPress={(e) => e.key === 'Enter' ? handleSubmit() : null}
+              placeholder="Ask something..."
               className="message-input"
               disabled={isLoading}
             />
@@ -423,19 +462,12 @@ function UserDashboard() {
             <button
               onClick={handleSubmit}
               className="send-btn"
-              disabled={!userInput.trim() || !selectedFile || isLoading}
+              disabled={(!userInput.trim() && uploadedFiles.length === 0) || isLoading}
             >
               <SendIcon />
             </button>
 
           </div>
-
-          {selectedFile && (
-            <div className="selected-file">
-              {selectedFile.name}
-              <button onClick={() => { setSelectedFile(null); fileInputRef.current.value = ''; }}>×</button>
-            </div>
-          )}
         </div>
 
       </div>

@@ -20,7 +20,10 @@ const EyeIcon = ({ visible }) =>
 
 const SignUp = () => {
   const navigate = useNavigate();
+
   const [phone, setPhone] = useState('');
+  const [countryCode, setCountryCode] = useState('');
+
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -28,6 +31,7 @@ const SignUp = () => {
     password: '',
     phone: ''
   });
+
   const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e) => {
@@ -39,9 +43,17 @@ const SignUp = () => {
   // Register user
   const handleRegister = async (e) => {
     e.preventDefault();
+
     const { firstName, lastName, email, password } = formData;
 
-    const payload = { firstName, lastName, email, password, phone };
+    const payload = {
+      firstName,
+      lastName,
+      email,
+      password,
+      phone,          // number
+      countryCode     // added for new server.js
+    };
 
     try {
       const res = await fetch("http://localhost:5000/auth/register", {
@@ -52,6 +64,7 @@ const SignUp = () => {
       });
 
       const data = await res.json();
+
       if (data.error) {
         alert(data.error);
       } else {
@@ -71,19 +84,69 @@ const SignUp = () => {
           <p className="small-text">Create an account to continue!</p>
 
           <form className="allips" onSubmit={handleRegister}>
-            <input type="text" name="firstName" placeholder="First Name" className="signup-input" onChange={handleChange} required />
-            <input type="text" name="lastName" placeholder="Last Name" className="signup-input" onChange={handleChange} required />
-            <input type="email" name="email" placeholder="Email" className="signup-input" onChange={handleChange} required />
-            <PhoneInput country={'in'} value={phone} onChange={setPhone} inputClass="signup-input phone-input" required />
+            <input
+              type="text"
+              name="firstName"
+              placeholder="First Name"
+              className="signup-input"
+              onChange={handleChange}
+              required
+            />
+
+            <input
+              type="text"
+              name="lastName"
+              placeholder="Last Name"
+              className="signup-input"
+              onChange={handleChange}
+              required
+            />
+
+            <input
+              type="email"
+              name="email"
+              placeholder="Email"
+              className="signup-input"
+              onChange={handleChange}
+              required
+            />
+
+            <PhoneInput
+              country={'in'}
+              value={phone}
+              onChange={(value, data) => {
+                setPhone(value);
+                setCountryCode(data.dialCode);
+              }}
+              inputClass="signup-input phone-input"
+              required
+            />
+
             <div style={{ position: 'relative', width: '100%' }}>
-              <input type={showPassword ? 'text' : 'password'} name="password" placeholder="Password" className="signup-input password-input" onChange={handleChange} required />
-              <span className="toggle-password" onClick={togglePasswordVisibility}><EyeIcon visible={showPassword} /></span>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                name="password"
+                placeholder="Password"
+                className="signup-input password-input"
+                onChange={handleChange}
+                required
+              />
+              <span
+                className="toggle-password"
+                onClick={togglePasswordVisibility}
+              >
+                <EyeIcon visible={showPassword} />
+              </span>
             </div>
-            <button type="submit" className="signup-button">Register</button>
+
+            <button type="submit" className="signup-button">
+              Register
+            </button>
           </form>
 
           <p className="signup-login">
-            Already have an account? <Link className="signup-link" to="/login">Login</Link>
+            Already have an account?{" "}
+            <Link className="signup-link" to="/login">Login</Link>
           </p>
         </div>
       </div>
