@@ -190,14 +190,6 @@ resp = requests.post(
 resp = requests.get(f"http://localhost:8000/chat/{username}/{session_id}")
 print(resp.json()["messages"])
 ```
-
-## Key Differences from Original
-
-1. ✅ Sessions created via ADK ONLY (not UUID)
-2. ✅ No user auto-creation (user must exist)
-3. ✅ ADK session ID stored in MongoDB
-4. ✅ Clean separation: ADK for sessions, MongoDB for storage
-
 ## Troubleshooting
 
 **"User not found"** → User must exist in MongoDB users collection
