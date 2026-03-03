@@ -4,7 +4,7 @@ from google.adk.tools.agent_tool import AgentTool
 
 risk_analyser_agent = Agent(
     name="risk_analyser_agent",
-    model="gemini-2.5-pro",
+    model="gemini-2.5-flash",
     description="Orchestrator agent the delegates tasks to specialized tools, including Plotly.js code for legal risk virtualization",
     instruction="""
             You have access to the tool:

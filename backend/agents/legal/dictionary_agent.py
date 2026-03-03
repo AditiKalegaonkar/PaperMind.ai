@@ -1,11 +1,11 @@
 from google.adk.agents import Agent
-from tools import get_legal_definition
-from webAgent import search_the_web_tool
+from tools.tool import get_legal_definition
+from .webAgent import search_the_web_tool
 from google.adk.tools.agent_tool import AgentTool
 
 legal_dict_agent = Agent(
     name="legal_tool_agent",
-    model="gemini-2.5-pro",
+    model="gemini-2.5-flash",
     description="Agent that provides legal definitions.",
     instruction="""
     You are a helpful legal assistant. You have to define difficult word according to the summary.
