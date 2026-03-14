@@ -7,3 +7,6 @@
 # Python cache
 __pycache__
 *.py[cod]
+
+chat.db
+chat2.db

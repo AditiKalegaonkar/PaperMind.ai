@@ -18,6 +18,8 @@ const EyeIcon = ({ visible }) =>
     </svg>
   );
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
 const SignUp = () => {
   const navigate = useNavigate();
 
@@ -56,7 +58,7 @@ const SignUp = () => {
     };
 
     try {
-      const res = await fetch("http://localhost:5000/auth/register", {
+      const res = await fetch(`${API_URL}/auth/register`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

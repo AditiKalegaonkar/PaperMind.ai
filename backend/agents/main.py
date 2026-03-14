@@ -1,11 +1,15 @@
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from typing import Optional
-from datetime import datetime
-from bson import ObjectId
+import logging
 import os
 import shutil
 import uuid
+from contextlib import asynccontextmanager
+from datetime import datetime
+from typing import Optional, List, AsyncGenerator
+
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
+from bson import ObjectId
 from dotenv import load_dotenv
 import motor.motor_asyncio
 from google.genai import types
@@ -15,393 +19,463 @@ from google.adk.agents import Agent
 from utility import utils
 import uvicorn
 
-# Agent Imports
 from legal.agent import legal_agent_tool
 from education.agent import education_agent_tool
 from finance.agent import finance_agent_tool
+from general.rag_agent import general_rag_agent_tool
 
 load_dotenv()
 
-# FastAPI app initialization
-app = FastAPI(title="PaperMind API", version="1.0.0")
+# ── Structured logging ────────────────────────────────────────────────────────
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+log = logging.getLogger("papermind")
 
-# CORS middleware
+# ── MongoDB ───────────────────────────────────────────────────────────────────
+MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
+client = motor.motor_asyncio.AsyncIOMotorClient(MONGODB_URL)
+try:
+    db = client.get_default_database()
+    log.info("Connected to MongoDB database: %s", db.name)
+except Exception:
+    db = client.papermind_db
+    log.info("No DB in URL, defaulting to: %s", db.name)
+
+users_collection = db.users
+chats_collection = db.chats
+
+# ── ADK session service (SQLite) ──────────────────────────────────────────────
+db_url = "sqlite+aiosqlite:///chat2.db"
+session_service = DatabaseSessionService(db_url=db_url)
+APP_NAME = "PaperMind"
+
+UPLOAD_DIR = "uploaded_files"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+
+# ── Lifespan: startup tasks ────────────────────────────────────────────────────
+# NOTE: lifespan MUST be defined before app = FastAPI(lifespan=lifespan)
+@asynccontextmanager
+async def lifespan(app: "FastAPI"):
+    # Create compound index on startup (idempotent — safe to re-run)
+    await chats_collection.create_index(
+        [("userId", 1), ("sessions.sessionId", 1)],
+        name="userId_sessionId",
+    )
+    log.info("MongoDB indexes ensured.")
+    yield
+
+
+# ── App ───────────────────────────────────────────────────────────────────────
+app = FastAPI(title="PaperMind API", version="1.0.0", lifespan=lifespan)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Session-Id", "X-Adk-Session-Id"],  # needed so browser can read them
 )
 
-# ================= MONGODB CONNECTION (UPDATED) =================
-# We now attempt to use the database name from the connection string first.
-MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
-client = motor.motor_asyncio.AsyncIOMotorClient(MONGODB_URL)
 
-try:
-    # This aligns Python with Node.js/Mongoose behavior
-    db = client.get_default_database()
-    print(f"[INFO] Connected to database: {db.name}")
-except Exception:
-    # Fallback if the URL doesn't specify a DB name
-    db = client.papermind_db
-    print(f"[INFO] No DB in URL, defaulting to: {db.name}")
+# ── Helpers ───────────────────────────────────────────────────────────────────
 
-# Collections
-users_collection = db.users
-chats_collection = db.chats
-
-# Session service for ADK
-db_url = "sqlite:///chat.db"
-session_service = DatabaseSessionService(db_url=db_url)
-APP_NAME = "PaperMind"
-
-# Upload directory
-UPLOAD_DIR = "uploaded_files"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+def _get_tools(agent_type: str) -> list:
+    return {
+        "general":   [general_rag_agent_tool],
+        "legal":     [legal_agent_tool],
+        "education": [education_agent_tool],
+        "finance":   [finance_agent_tool],
+    }.get(agent_type.lower(), [])
 
 
-# ================= HELPER FUNCTIONS =================
-
-def get_agent_tools(agent_type: str) -> list:
-    """Return appropriate tools based on agent type"""
-    tool_list = []
-    if agent_type.lower() == "legal":
-        tool_list.append(legal_agent_tool)
-    elif agent_type.lower() == "education":
-        tool_list.append(education_agent_tool)
-    elif agent_type.lower() == "finance":
-        tool_list.append(finance_agent_tool)
-    return tool_list
-
-
-def create_agent(agent_type: str) -> Agent:
-    """Create agent with appropriate tools"""
-    tools = get_agent_tools(agent_type)
-
+def _create_agent(agent_type: str) -> Agent:
     if agent_type.lower() == "general":
-        description = """
-        You are a helpful general assistant.
-        Provide clear, concise, and accurate responses to user queries.
-        Be friendly and professional in your interactions.
-        """
+        desc = """You are a helpful general assistant that can analyze documents and answer questions.
+        
+        When a user uploads a document:
+        1. Extract the file path from the user's message (the path is provided in the prompt)
+        2. Use the file_path tool to store the path
+        3. Then use execute_rag_pipeline tool to analyze the document
+        4. Present the analysis to the user
+        
+        If no document is uploaded, just answer the question directly.
+        Be clear, concise, and professional."""
+    elif agent_type.lower() == "education":
+        desc = """You are an education-focused assistant that helps users learn from documents.
+        
+        When a user uploads a document:
+        1. Extract the file path from the user's message
+        2. Use the file_path tool to store the path
+        3. Use execute_rag_pipeline to analyze the document
+        4. Store the summary in session state
+        
+        Then you can help with flashcards or quizzes based on the document.
+        Use only the provided document context."""
+    elif agent_type.lower() == "finance":
+        desc = """You are a finance-focused assistant that analyzes financial documents.
+        
+        When a user uploads a document:
+        1. Extract the file path from the user's message
+        2. Use the file_path tool to store the path
+        3. Use execute_rag_pipeline to analyze the document
+        4. Present financial insights from the document
+        
+        Use only the provided document context. Do not give personalized financial advice."""
     else:
-        description = f"""
-        You are a {agent_type} document assistant.
-        Use only the provided document context and the user request.
-        Rules:
-        - Do not use external knowledge.
-        - Do not invent facts.
-        - If info is missing, say so.
-        """
-
-    return Agent(
-        name=f"{agent_type}_agent",
-        description=description,
-        tools=tools
-    )
+        desc = (
+            f"You are a {agent_type} document assistant. "
+            "Use only the provided document context. "
+            "Do not invent facts. If info is missing, say so."
+        )
+    return Agent(name=f"{agent_type}_agent", description=desc, tools=_get_tools(agent_type))
 
 
-async def get_user_id(username: str) -> ObjectId:
-    """Get user ID from username (email) with Debugging"""
+async def _get_user_id(username: str) -> ObjectId:
     user = await users_collection.find_one({"email": username})
-
     if not user:
-        # Debugging: Print failure details to console
-        print(f"[ERROR] User '{username}' not found in DB '{db.name}'.")
+        log.warning("User not found: %s", username)
         raise HTTPException(status_code=404, detail="User not found")
-
     return user["_id"]
 
 
-async def ensure_chat_document(user_id: ObjectId) -> dict:
-    """Ensure chat document exists for user"""
-    chat_doc = await chats_collection.find_one({"userId": user_id})
-
-    if not chat_doc:
-        chat_doc = {
-            "userId": user_id,
-            "sessions": [],
-            "createdAt": datetime.now(),
-            "updatedAt": datetime.now()
+async def _ensure_chat_doc(user_id: ObjectId) -> dict:
+    doc = await chats_collection.find_one({"userId": user_id})
+    if not doc:
+        doc = {
+            "userId": user_id, "sessions": [],
+            "createdAt": datetime.now(), "updatedAt": datetime.now(),
         }
-        result = await chats_collection.insert_one(chat_doc)
-        chat_doc["_id"] = result.inserted_id
+        result = await chats_collection.insert_one(doc)
+        doc["_id"] = result.inserted_id
+    return doc
 
-    return chat_doc
 
-
-async def create_adk_session(username: str) -> str:
-    """Create a new ADK session internally"""
-    initial_state = {"user_name": username}
-    new_session = await session_service.create_session(
+async def _create_adk_session(username: str) -> str:
+    """Create ADK session in SQLite, register it, return its ID."""
+    session = await session_service.create_session(
         app_name=APP_NAME,
         user_id=username,
-        state=initial_state,
+        state={"user_name": username},
     )
-    adk_id = new_session.id
-    await utils.add_new_session(username, adk_id)
-    print(f"[INFO] Created internal ADK session: {adk_id}")
-    return adk_id
+    await utils.add_new_session(username, session.id)
+    log.info("Created ADK session %s for %s", session.id, username)
+    return session.id
 
 
-async def add_session_to_mongo(user_id: ObjectId, chat_session_id: str, adk_session_id: str):
-    """Add new session to MongoDB chat document"""
-    new_session = {
-        "sessionId": chat_session_id,     # Public UUID
-        "adkSessionId": adk_session_id,   # Internal ADK ID
-        "messages": [],
-        "createdAt": datetime.now(),
-        "updatedAt": datetime.now()
-    }
+async def _add_session_to_mongo(user_id: ObjectId, chat_id: str, adk_id: str, agent: str = "general"):
     await chats_collection.update_one(
         {"userId": user_id},
         {
-            "$push": {"sessions": new_session},
-            "$set": {"updatedAt": datetime.now()}
-        }
+            "$push": {
+                "sessions": {
+                    "sessionId": chat_id,
+                    "adkSessionId": adk_id,
+                    "agent": agent,
+                    "title": None,
+                    "messages": [],
+                    "documents": [],
+                    "createdAt": datetime.now(),
+                    "updatedAt": datetime.now(),
+                }
+            },
+            "$set": {"updatedAt": datetime.now()},
+        },
     )
 
 
-async def get_adk_id_for_session(user_id: ObjectId, chat_session_id: str) -> Optional[str]:
-    """Retrieve the internal ADK session ID"""
-    chat_doc = await chats_collection.find_one(
-        {"userId": user_id, "sessions.sessionId": chat_session_id},
-        {"sessions.$": 1}
+async def _get_adk_id(user_id: ObjectId, chat_id: str) -> Optional[str]:
+    doc = await chats_collection.find_one(
+        {"userId": user_id, "sessions.sessionId": chat_id},
+        {"sessions.$": 1},
     )
-    if chat_doc and "sessions" in chat_doc and chat_doc["sessions"]:
-        session = chat_doc["sessions"][0]
-        return session.get("adkSessionId", session.get("sessionId"))
+    if doc and doc.get("sessions"):
+        s = doc["sessions"][0]
+        return s.get("adkSessionId") or s.get("sessionId")
     return None
 
 
-async def update_adk_id_for_session(user_id: ObjectId, chat_session_id: str, new_adk_id: str):
-    """Update the ADK ID for an existing mongo session"""
+async def _update_adk_id(user_id: ObjectId, chat_id: str, adk_id: str):
     await chats_collection.update_one(
-        {"userId": user_id, "sessions.sessionId": chat_session_id},
-        {"$set": {"sessions.$.adkSessionId": new_adk_id}}
+        {"userId": user_id, "sessions.sessionId": chat_id},
+        {"$set": {"sessions.$.adkSessionId": adk_id}},
     )
 
 
-async def save_message_to_session(user_id: ObjectId, chat_session_id: str, message: str, answer: str):
-    """Save message and answer to session in MongoDB"""
-    new_message = {
-        "message": message,
-        "answer": answer,
-        "timestamp": datetime.now()
-    }
+async def _save_message(user_id: ObjectId, chat_id: str, message: str, answer: str):
     await chats_collection.update_one(
-        {"userId": user_id, "sessions.sessionId": chat_session_id},
+        {"userId": user_id, "sessions.sessionId": chat_id},
         {
-            "$push": {"sessions.$.messages": new_message},
+            "$push": {
+                "sessions.$.messages": {
+                    "message": message, "answer": answer, "timestamp": datetime.now()
+                }
+            },
             "$set": {
                 "sessions.$.updatedAt": datetime.now(),
-                "updatedAt": datetime.now()
-            }
-        }
+                "updatedAt": datetime.now(),
+            },
+        },
     )
 
 
-async def process_agent_request(
-    agent_type: str,
-    username: str,
-    adk_session_id: str,
-    query: str,
-    file_path: Optional[str] = None
+async def _process(
+    agent_type: str, username: str, adk_id: str, query: str, file_paths: List[str]
 ) -> str:
-    """Process request through the agent"""
-    agent = create_agent(agent_type)
-    runner = Runner(
-        agent=agent,
-        app_name=APP_NAME,
-        session_service=session_service,
-    )
+    agent  = _create_agent(agent_type)
+    runner = Runner(agent=agent, app_name=APP_NAME, session_service=session_service)
 
     if agent_type.lower() == "general":
-        user_prompt = f"User Query: {query}"
+        prompt = f"User Query: {query}"
+        if file_paths:
+            prompt += "\nDocument Paths:\n" + "\n".join(f'- "{p}"' for p in file_paths)
     else:
-        user_prompt = f"""
-        Please perform a full {agent_type} analysis based on:
-        User Query: "{query}"
-        """
-        if file_path:
-            user_prompt += f'\nDocument Path: "{file_path}"'
+        prompt = f'Please perform a full {agent_type} analysis.\nUser Query: "{query}"'
+        if file_paths:
+            prompt += "\nDocument Paths:\n" + "\n".join(f'- "{p}"' for p in file_paths)
 
-    content = types.Content(
-        role="user",
-        parts=[types.Part(text=user_prompt)],
-    )
-
+    content = types.Content(role="user", parts=[types.Part(text=prompt)])
     try:
-        final_response = await utils.call_agent_async(runner, username, adk_session_id, content)
-        if isinstance(final_response, dict):
-            answer = final_response.get("response", str(final_response))
-        else:
-            answer = str(final_response)
-        return answer
+        result = await utils.call_agent_async(runner, username, adk_id)
+        return result.get("response", str(result)) if isinstance(result, dict) else str(result)
     except Exception as e:
-        print(f"[ERROR] Agent processing failed: {e}")
-        return f"Error processing request: {str(e)}"
+        log.error("Agent processing failed for %s: %s", username, e)
+        return f"Error processing request: {e}"
 
 
-# ================= API ROUTES =================
+async def _stream_process(
+    agent_type: str, username: str, adk_id: str, query: str, file_paths: List[str]
+) -> AsyncGenerator[str, None]:
+    """Yield SSE lines `data: <token>\n\n`. Falls back to one-shot if run_stream unavailable."""
+    agent  = _create_agent(agent_type)
+    runner = Runner(agent=agent, app_name=APP_NAME, session_service=session_service)
+
+    if agent_type.lower() == "general":
+        prompt = f"User Query: {query}"
+        if file_paths:
+            prompt += "\nDocument Paths:\n" + "\n".join(f'- "{p}"' for p in file_paths)
+    else:
+        prompt = f'Please perform a full {agent_type} analysis.\nUser Query: "{query}"'
+        if file_paths:
+            prompt += "\nDocument Paths:\n" + "\n".join(f'- "{p}"' for p in file_paths)
+
+    content = types.Content(role="user", parts=[types.Part(text=prompt)])
+    try:
+        async for chunk in runner.run_async(
+            user_id=username,
+            session_id=adk_id,
+            new_message=content
+        ):
+            text = ""
+            if hasattr(chunk, "content") and chunk.content:
+                content_obj = chunk.content
+                if hasattr(content_obj, "parts") and content_obj.parts:
+                    for part in content_obj.parts:
+                        if hasattr(part, "text") and part.text:
+                            text += part.text
+                        elif hasattr(part, "thought") and part.thought:
+                            pass
+                else:
+                    text = str(content_obj)
+            else:
+                text = str(chunk)
+
+            if text:
+                yield f"data: {text}\n\n"
+    except Exception as e:
+        log.error("Stream agent failed for %s: %s", username, e)
+        yield f"data: Error: {e}\n\n"
+
+    yield "data: [DONE]\n\n"
+
+
+# ── Routes ────────────────────────────────────────────────────────────────────
 
 @app.get("/health")
 async def health_check():
     try:
         await db.command("ping")
-        mongo_status = "connected"
+        mongo = "connected"
     except Exception as e:
-        mongo_status = f"error: {str(e)}"
-    return {
-        "status": "ok",
-        "mongodb": mongo_status,
-        "db_name": db.name
-    }
+        mongo = f"error: {e}"
+    return {"status": "ok", "mongodb": mongo, "db_name": db.name}
 
 
 @app.post("/chat")
 async def chat(
-    agent: str = Form(..., description="Agent type"),
-    username: str = Form(..., description="User's email"),
-    question: str = Form(..., description="User's question"),
-    sessionId: Optional[str] = Form(None, description="MongoDB Session UUID"),
-    file: Optional[UploadFile] = File(None)
+    agent:      str                         = Form(...),
+    username:   str                         = Form(...),
+    question:   str                         = Form(...),
+    sessionId:  Optional[str]               = Form(None),
+    # NOTE: field is named 'stream' to match what the frontend sends.
+    # Python's built-in `stream` is not in this scope so no shadowing issue.
+    stream:     Optional[str]               = Form(None),
+    files:      Optional[List[UploadFile]]  = File(None),
 ):
-    try:
-        valid_agents = ["legal", "education", "finance", "general"]
-        if agent.lower() not in valid_agents:
-            raise HTTPException(status_code=400, detail="Invalid agent type")
+    valid = {"legal", "education", "finance", "general"}
+    if agent.lower() not in valid:
+        raise HTTPException(status_code=400, detail="Invalid agent type")
 
-        file_path = None
-        if file:
-            safe_filename = f"{username}_{datetime.now().timestamp()}_{file.filename}"
-            file_path = os.path.join(UPLOAD_DIR, safe_filename)
-            with open(file_path, "wb") as buffer:
-                shutil.copyfileobj(file.file, buffer)
+    # Save uploads to disk (blocking I/O — acceptable for ≤10 MB files)
+    file_paths: List[str] = []
+    if files:
+        for f in files:
+            if f and f.filename:
+                safe = f"{username}_{datetime.now().timestamp()}_{f.filename}"
+                dest = os.path.join(UPLOAD_DIR, safe)
+                with open(dest, "wb") as buf:
+                    shutil.copyfileobj(f.file, buf)
+                file_paths.append(dest)
+                log.info("Saved upload: %s", dest)
 
-        # DEBUG: This is where it was failing
-        user_id = await get_user_id(username)
-        chat_doc = await ensure_chat_document(user_id)
+    user_id = await _get_user_id(username)
+    await _ensure_chat_doc(user_id)
 
-        active_chat_id = None
-        active_adk_id = None
+    # ── Session resolution ─────────────────────────────────────────────────────
+    if sessionId:
+        active_chat_id = sessionId
+        adk_id = await _get_adk_id(user_id, active_chat_id)
+        if not adk_id:
+            adk_id = await _create_adk_session(username)
+            await _update_adk_id(user_id, active_chat_id, adk_id)
+    else:
+        active_chat_id = str(uuid.uuid4())
+        adk_id = await _create_adk_session(username)
+        await _add_session_to_mongo(user_id, active_chat_id, adk_id, agent)
 
-        if sessionId:
-            # Resume existing session
-            active_chat_id = sessionId
-            active_adk_id = await get_adk_id_for_session(user_id, active_chat_id)
-            if not active_adk_id:
-                active_adk_id = await create_adk_session(username)
-                await update_adk_id_for_session(user_id, active_chat_id, active_adk_id)
-        else:
-            # Create or Auto-resume
-            existing_sessions = chat_doc.get("sessions", [])
-            if existing_sessions:
-                latest_session = sorted(
-                    existing_sessions,
-                    key=lambda x: x.get("updatedAt", x.get(
-                        "createdAt", datetime.min)),
-                    reverse=True
-                )[0]
-                active_chat_id = latest_session["sessionId"]
-                active_adk_id = latest_session.get(
-                    "adkSessionId", active_chat_id)
-            else:
-                active_chat_id = str(uuid.uuid4())
-                active_adk_id = await create_adk_session(username)
-                await add_session_to_mongo(user_id, active_chat_id, active_adk_id)
+    log.info("Chat | user=%s session=%s agent=%s stream=%s", username, active_chat_id, agent, stream)
 
-        answer = await process_agent_request(
-            agent_type=agent,
-            username=username,
-            adk_session_id=active_adk_id,
-            query=question,
-            file_path=file_path
+    # ── Streaming SSE response ─────────────────────────────────────────────────
+    if stream and stream.lower() == "true":
+        collected: List[str] = []
+
+        async def sse_with_save():
+            async for chunk in _stream_process(agent, username, adk_id, question, file_paths):
+                if chunk != "data: [DONE]\n\n":
+                    # Strip the `data: ` prefix (6 chars) and trailing newlines
+                    collected.append(chunk[6:].rstrip("\n"))
+                yield chunk
+            await _save_message(user_id, active_chat_id, question, "".join(collected))
+
+        return StreamingResponse(
+            sse_with_save(),
+            media_type="text/event-stream",
+            headers={
+                "X-Session-Id":     active_chat_id,
+                "X-Adk-Session-Id": adk_id,
+                "Cache-Control":    "no-cache",
+            },
         )
 
-        await save_message_to_session(user_id, active_chat_id, question, answer)
+    # ── Standard JSON response ─────────────────────────────────────────────────
+    answer = await _process(agent, username, adk_id, question, file_paths)
+    await _save_message(user_id, active_chat_id, question, answer)
+    log.info("Returning response: %s", answer[:200])
 
-        return {
-            "sessionId": active_chat_id,
-            "answer": answer,
-            "timestamp": datetime.now().isoformat()
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"[ERROR] Chat endpoint error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    return {
+        "sessionId":    active_chat_id,
+        "adkSessionId": adk_id,
+        "response":       answer,
+        "timestamp":    datetime.now().isoformat(),
+    }
 
 
-@app.get("/chat/latest/{username}")
-async def get_latest_chat(username: str):
-    try:
-        user_id = await get_user_id(username)
-        chat_doc = await chats_collection.find_one({"userId": user_id})
+@app.patch("/chat/{username}/{session_id}/rename")
+async def rename_session(username: str, session_id: str, title: str = Form(...)):
+    user_id = await _get_user_id(username)
+    result = await chats_collection.update_one(
+        {"userId": user_id, "sessions.sessionId": session_id},
+        {"$set": {"sessions.$.title": title.strip()[:60]}},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Session not found")
+    log.info("Renamed session %s → '%s'", session_id, title)
+    return {"ok": True, "title": title.strip()[:60]}
 
-        if not chat_doc or not chat_doc.get("sessions"):
-            return {"sessionId": None, "messages": []}
 
-        latest_session = sorted(
-            chat_doc.get("sessions", []),
-            key=lambda x: x.get("updatedAt", x.get("createdAt", datetime.min)),
-            reverse=True
-        )[0]
+@app.patch("/chat/{username}/{session_id}/metadata")
+async def update_session_metadata(
+    username: str, 
+    session_id: str, 
+    agent: Optional[str] = Form(None),
+    documents: Optional[List[str]] = Form(None)
+):
+    user_id = await _get_user_id(username)
+    update_fields = {}
+    if agent:
+        update_fields["sessions.$.agent"] = agent
+    if documents is not None:
+        update_fields["sessions.$.documents"] = documents
+    
+    if not update_fields:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    
+    result = await chats_collection.update_one(
+        {"userId": user_id, "sessions.sessionId": session_id},
+        {"$set": update_fields},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Session not found")
+    log.info("Updated metadata for session %s: agent=%s, docs=%s", session_id, agent, documents)
+    return {"ok": True}
 
-        return {
-            "sessionId": latest_session["sessionId"],
-            "messages": latest_session.get("messages", [])
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/chat/{username}/{session_id}")
+async def delete_session(username: str, session_id: str):
+    user_id = await _get_user_id(username)
+    result = await chats_collection.update_one(
+        {"userId": user_id},
+        {"$pull": {"sessions": {"sessionId": session_id}}},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Session not found")
+    log.info("Deleted session %s for %s", session_id, username)
+    return {"ok": True}
 
 
 @app.get("/sessions/{username}")
-async def get_all_sessions(username: str):
-    try:
-        user_id = await get_user_id(username)
-        chat_doc = await chats_collection.find_one({"userId": user_id})
+async def get_sessions(username: str):
+    user_id = await _get_user_id(username)
+    doc = await chats_collection.find_one({"userId": user_id})
+    if not doc:
+        return {"sessions": []}
 
-        if not chat_doc:
-            return {"sessions": []}
-
-        sessions = []
-        for session in chat_doc.get("sessions", []):
-            sessions.append({
-                "sessionId": session["sessionId"],
-                "messageCount": len(session.get("messages", [])),
-                "createdAt": session.get("createdAt"),
-                "lastMessage": session.get("messages", [])[-1] if session.get("messages") else None
-            })
-
-        return {"sessions": sessions}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    sessions = [
+        {
+            "sessionId":    s["sessionId"],
+            "title":        s.get("title"),
+            "agent":        s.get("agent", "general"),
+            "documents":    s.get("documents", []),
+            "messageCount": len(s.get("messages", [])),
+            "createdAt":    s.get("createdAt"),
+            "updatedAt":    s.get("updatedAt"),
+            "lastMessage":  s["messages"][-1] if s.get("messages") else None,
+        }
+        for s in doc.get("sessions", [])
+    ]
+    sessions.sort(
+        key=lambda x: x.get("updatedAt") or x.get("createdAt") or datetime.min,
+        reverse=True,
+    )
+    return {"sessions": sessions}
 
 
 @app.get("/chat/{username}/{session_id}")
-async def get_session_chat(username: str, session_id: str):
-    try:
-        user_id = await get_user_id(username)
-        chat_doc = await chats_collection.find_one({"userId": user_id})
-
-        if not chat_doc:
-            raise HTTPException(status_code=404, detail="No history")
-
-        session = next((s for s in chat_doc.get("sessions", [])
-                       if s["sessionId"] == session_id), None)
-        if not session:
-            raise HTTPException(status_code=404, detail="Session not found")
-
-        return {
-            "sessionId": session["sessionId"],
-            "messages": session.get("messages", [])
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+async def get_session(username: str, session_id: str):
+    user_id = await _get_user_id(username)
+    doc = await chats_collection.find_one({"userId": user_id})
+    if not doc:
+        raise HTTPException(status_code=404, detail="No history")
+    session = next(
+        (s for s in doc.get("sessions", []) if s["sessionId"] == session_id), None
+    )
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return {"sessionId": session["sessionId"], "messages": session.get("messages", [])}
 
 
 if __name__ == "__main__":

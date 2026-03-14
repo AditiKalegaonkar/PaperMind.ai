@@ -1,41 +1,25 @@
-# Imports
-import os
 import requests
 from bs4 import BeautifulSoup
 
-# Legal terms definition
-
 
 def get_legal_definition(word: str):
-    """Look up a legal word in Nolo Legal Dictionary and return its definition."""
-    word_lower = word.lower()
+    """Look up a legal term in the Nolo Legal Dictionary."""
     try:
-        url = f"https://www.nolo.com/dictionary/{word_lower}-term.html"
-        response = requests.get(url, timeout=5)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
-        content_div = soup.find("div", class_="definition")
-        if content_div:
-            text = content_div.get_text(separator="\n").strip()
-            return text
-        else:
-            return None
+        url = f"https://www.nolo.com/dictionary/{word.lower()}-term.html"
+        r = requests.get(url, timeout=5)
+        r.raise_for_status()
+        div = BeautifulSoup(r.text, "html.parser").find("div", class_="definition")
+        return div.get_text(separator="\n").strip() if div else None
     except requests.RequestException:
         return None
 
 
 def get_article_information():
-    url = f"https://www.constitutionofindia.net/articles/article"
+    """Fetch Constitution of India article listing."""
     try:
-        response = requests.get(url)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
-        main_content = soup.find("div")
-
-        if main_content:
-            response = main_content.get_text(strip=True)
-        else:
-            return None
+        r = requests.get("https://www.constitutionofindia.net/articles/article", timeout=5)
+        r.raise_for_status()
+        div = BeautifulSoup(r.text, "html.parser").find("div")
+        return div.get_text(strip=True) if div else None
     except requests.RequestException:
         return None
-    return response

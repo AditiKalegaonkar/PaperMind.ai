@@ -5,6 +5,8 @@ import "./Login.css";
 import Googlelogo from "../assets/google-logo.png";
 import { Link, useNavigate } from "react-router-dom";
 
+const API_URL = "http://localhost:5000";
+
 const Login = () => {
   const navigate = useNavigate();
   const [show, setShow] = useState(false);
@@ -14,20 +16,22 @@ const Login = () => {
 
   const handleNormalLogin = async (e) => {
     e.preventDefault();
+    setError("");
 
     try {
       const res = await axios.post(
-        "http://localhost:5000/auth/login",
+        `${API_URL}/auth/login`,
         { email, password },
         { withCredentials: true }
       );
-
-      if (res.data.user) {
-        navigate("/userDashboard");
+      
+      if (res.data.user || res.data.success) {
+        navigate("/userDashboard", { replace: true });
       } else if (res.data.error) {
         setError(res.data.error);
       }
     } catch (err) {
+      console.error("Login error:", err);
       setError(err.response?.data?.error || "Login failed");
     }
   };
@@ -42,7 +46,7 @@ const Login = () => {
           <p className="small-text" style={{ color: "black" }}>
             Enter your email and password for log in
           </p>
-          <div>
+          <form onSubmit={handleNormalLogin}>
             <input
               type="email"
               placeholder="Email"
@@ -50,6 +54,7 @@ const Login = () => {
               value={email}
               style={{ color: "black" }}
               onChange={(e) => setEmail(e.target.value)}
+              required
             />
 
             <div className="password">
@@ -60,6 +65,7 @@ const Login = () => {
                 className="input"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                required
               />
               <span onClick={() => setShow(!show)}>
                 {show ? <FaEyeSlash /> : <FaEye />}
@@ -81,7 +87,7 @@ const Login = () => {
                 Forgot password?
               </a>
             </div>
-          </div>
+          </form>
 
           <button className="login-button" onClick={handleNormalLogin}>
             Log In
@@ -103,8 +109,7 @@ const Login = () => {
             <button
               className="sso"
               onClick={() =>
-                (window.location.href =
-                  "http://localhost:5000/auth/google")
+                (window.location.href = `${API_URL}/auth/google`)
               }
             >
               <img

@@ -1,33 +1,60 @@
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Quicksand', system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  color-scheme: light;
+  color: #525FE1;
+  background-color: #F5F6FF;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* Color Variables */
+  --primary: #525FE1;
+  --primary-lt: #A29BFE;
+  --primary-dark: #3A4499;
+  --accent: #F86F03;
+  --accent-lt: #FFA41B;
+  --accent-dark: #CC4E02;
+  --bg: #F5F6FF;
+  --surface: #FFFFFF;
+  --surface2: #EEF0FF;
+  --border: #C5C6D0;
+  --text: #525FE1;
+  --text-light: #636E72;
+  --muted: #9CA3AF;
+  --user-bg: #F86F03;
+  --bot-bg: #FFF8F0;
+  --err: #D63031;
+}
+
+/* Global utility class for Quicksand font */
+.quicksand {
+  font-family: "Quicksand", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
 }
 
 a {
   font-weight: 500;
-  color: #646cff;
+  color: #525FE1;
   text-decoration: inherit;
 }
 a:hover {
-  color: #535bf2;
+  color: #F86F03;
 }
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
+  width: 100%;
   min-width: 320px;
   min-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 h1 {
@@ -37,32 +64,20 @@ h1 {
 
 button {
   border-radius: 8px;
-  border: 1px solid transparent;
+  border: 1px solid #525FE1;
   padding: 0.6em 1.2em;
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: #FFFFFF;
+  color: #525FE1;
   cursor: pointer;
   transition: border-color 0.25s;
 }
 button:hover {
-  border-color: #646cff;
+  border-color: #F86F03;
 }
 button:focus,
 button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+  outline: 4px auto #A29BFE;
 }
