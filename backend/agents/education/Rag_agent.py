@@ -1,7 +1,7 @@
 from google.adk.agents import Agent
 from google.adk.tools import FunctionTool, ToolContext
 from google.adk.tools.agent_tool import AgentTool
-from tools.RAG import run_rag_pipeline
+from tools.QdrantRAG import run_qdrant_rag
 from tools.prompts import EDUCATION_RAG
 import io
 import os
@@ -24,7 +24,7 @@ async def execute_rag_pipeline(tool_context: ToolContext):
         return f"Document not found at path: {file_path}"
     
     try:
-        summary = run_rag_pipeline(file_path, EDUCATION_RAG)
+        summary = run_qdrant_rag(file_path, EDUCATION_RAG)
         tool_context.state['summary'] = summary
         return summary
     except Exception as e:

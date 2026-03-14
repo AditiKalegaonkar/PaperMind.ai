@@ -73,6 +73,21 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Google OAuth
+app.get(
+  "/auth/google",
+  passport.authenticate("google", { scope: ["profile", "email"] })
+);
+
+app.get(
+  "/auth/google/callback",
+  passport.authenticate("google", { failureRedirect: `${FRONTEND_URL}/login` }),
+  (req, res) => {
+    console.log("Google user:", req.user);
+    res.redirect(`${FRONTEND_URL}/userDashboard`);
+  }
+);
+
 // ───────────────── Rate limiters ─────────────────
 const chatLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -183,7 +198,10 @@ app.post(
     form.append("username", req.currentUser.email);
     form.append("question", question);
 
-    if (sessionId) form.append("sessionId", sessionId);
+    //if (sessionId) form.append("sessionId", sessionId);
+    if (typeof sessionId === "string" && sessionId.length > 0) {
+      form.append("sessionId", sessionId);
+    }
     if (stream) form.append("stream", stream);
 
     (req.files || []).forEach((f) => {
@@ -207,11 +225,15 @@ app.post(
     const proxyReq = http.request(options, (proxyRes) => {
       cleanFiles(req.files);
 
-      Object.entries(proxyRes.headers).forEach(([k, v]) => {
-        if (!["connection", "transfer-encoding", "keep-alive"].includes(k)) {
-          res.setHeader(k, v);
+      const blocked = new Set(["connection","transfer-encoding","keep-alive"]);
+
+      for (const [key,value] of Object.entries(proxyRes.headers)) {
+        if (!blocked.has(key.toLowerCase())) {
+          res.setHeader(key,value);
         }
-      });
+      }
+
+      res.flushHeaders();
 
       res.statusCode = proxyRes.statusCode;
 

@@ -1,6 +1,13 @@
 import os
 import hashlib
 from dotenv import load_dotenv
+
+load_dotenv()
+google_api_key = os.getenv("GOOGLE_API_KEY")
+if google_api_key:
+    os.environ["GOOGLE_API_KEY"] = google_api_key
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
 from langchain_community.vectorstores import FAISS
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -11,10 +18,6 @@ from langchain_community.document_loaders import PyMuPDFLoader
 from presidio_analyzer import AnalyzerEngine, Pattern as _P, PatternRecognizer
 from presidio_anonymizer import AnonymizerEngine
 from presidio_analyzer.nlp_engine import NlpEngineProvider
-
-load_dotenv()
-os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_API_KEY")
-os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 # ── PII engine ────────────────────────────────────────────────────────────────
 _provider = NlpEngineProvider(nlp_configuration={
