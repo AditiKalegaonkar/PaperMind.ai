@@ -147,8 +147,6 @@ def readability(answer):
 
 
 def generate_answer_auto(context, query, domain="miscellaneous"):
-    model = genai.GenerativeModel("gemini-2.5-flash")
-
     temp = 0.9
     if domain.lower() == "financial":
         prompt = build_financial_prompt(context, query)

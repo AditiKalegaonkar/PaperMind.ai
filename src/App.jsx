@@ -8,14 +8,14 @@ import UserDashboard from "./Pages/UserDashboard.jsx";
 
 function App() {
   return (
-      <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/about" element={<About />} />
-        <Route path="/contacts" element={<Contacts />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<SignUp />} />
-        <Route path="/userDashboard" element={<UserDashboard />} />
-      </Routes>
+    <Routes>
+      <Route path="/" element={<Dashboard />} />
+      <Route path="/about" element={<About />} />
+      <Route path="/contacts" element={<Contacts />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<SignUp />} />
+      <Route path="/userDashboard" element={<UserDashboard />} />
+    </Routes>
   );
 }
 

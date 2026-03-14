@@ -1,56 +1,55 @@
 from google.adk.agents import Agent
 from google.adk.tools import FunctionTool, ToolContext
 from google.adk.tools.agent_tool import AgentTool
-from tools.RAG import RAG_pipeline
+from tools.RAG import run_rag_pipeline
 from tools.prompts import LEGAL_RAG
 from tools.tool import get_article_information, get_legal_definition
 import io
+import os
 
 
-def get_path(path: str, query: str, tool_context: ToolContext):
-    tool_context.state['path'] = path
-    tool_context.state['query'] = query
+def get_file_path(file_path: str, tool_context: ToolContext):
+    """Store the uploaded file path in session state."""
+    tool_context.state['file_path'] = file_path
+    return f"File path stored: {file_path}"
 
 
-async def RAG_pipeline(tool_context: ToolContext):
-    artifact_ids = await tool_context.list_artifacts()
-    artifact_id = artifact_ids[0]
+async def execute_rag_pipeline(tool_context: ToolContext):
+    """Execute RAG pipeline using the stored file path."""
+    file_path = tool_context.state.get('file_path')
+    
+    if not file_path:
+        return "No document uploaded. Please upload a document first."
+    
+    if not os.path.exists(file_path):
+        return f"Document not found at path: {file_path}"
+    
     try:
-        artifact_content = await tool_context.load_artifact(artifact_id)
-        print("The doc type: ", artifact_content.inline_data.mime_type)
-        file_name = artifact_content.inline_data.display_name
-        summary = RAG_pipeline(file_name, LEGAL_RAG)
+        summary = run_rag_pipeline(file_path, LEGAL_RAG)
         tool_context.state['summary'] = summary
-        pdf_bytes = artifact_content.inline_data.data
-        pdf_bytes_stream = io.BytesIO(pdf_bytes)
-    except FileNotFoundError:
-        print(f"Error: Artifact '{file_name}' not found.")
+        return summary
+    except Exception as e:
+        return f"Error processing document: {str(e)}"
 
-    return summary
-
-rag_function_tool = FunctionTool(func=RAG_pipeline)
-path_tool = FunctionTool(func=get_path)
+rag_function_tool = FunctionTool(func=execute_rag_pipeline)
+file_path_tool = FunctionTool(func=get_file_path)
 
 rag_agent = Agent(
     name="RAG_agent",
     model="gemini-2.5-flash",
     description="A Retrieval-Augmented Generation agent for document analysis.",
     instruction="""
-    You are a helpful assistant that analyzes documents. 
-    When a user provides a prompt that includes a file path, you must:
-
-    1. Use the 'get_path' tool to save the file path in the session context.
-    2. Then call the 'RAG_pipeline' tool to process the document located at that path.
-
-    Example workflow:
-        - Extract the file path from the user's message.
-        - Call get_path(path) to store it.
-        - Call RAG_pipeline() to analyze the document using the stored path.
-    Respond with results from RAG_pipeline and any relevant analysis.
-    Extract suitable articles and get information for them using the get_article_information tool.
-    Don't use RAG agent if you have got the summary already. 
+    You are a helpful assistant that analyzes legal documents.
+    
+    When a user uploads a document:
+    1. The file path is provided in the conversation - extract it
+    2. Use the file_path tool to store the path: file_path(path="<extracted_path>")
+    3. Then call execute_rag_pipeline to analyze the document
+    
+    If a summary already exists in session state, use it for answering questions.
+    Don't re-run RAG if you already have the summary.
     """,
-    tools=[rag_function_tool, get_path,
+    tools=[rag_function_tool, file_path_tool,
            get_article_information, get_legal_definition],
 )
 

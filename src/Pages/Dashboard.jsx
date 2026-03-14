@@ -1,4 +1,3 @@
-// import { Link } from "react-router-dom"; // ERROR 3: Removed unused import
 import "./Dashboard.css";
 import Navbar from '../Components/Navbar';
 import Footer from '../Components/Footer';
@@ -19,7 +18,6 @@ import otherMascot from "../assets/other.png";
 
 function Dashboard() {
   const [message, setMessage] = useState("");
-  const [file, setFile] = useState(null);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -152,7 +150,7 @@ function Dashboard() {
                   id="file-upload"
                   type="file"
                   style={{ display: "none" }}
-                  onChange={(e) => setFile(e.target.files[0])}
+                  onChange={() => {}}
                 />
               </div>
               <button className="submit-button" onClick={handleSubmit}>

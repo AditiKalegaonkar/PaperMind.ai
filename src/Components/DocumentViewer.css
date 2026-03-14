@@ -1,0 +1,260 @@
+.doc-viewer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 500px;
+  background: #fafafa;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.3s ease-in-out;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.15);
+  border-left: 1px solid #e0e0e0;
+  overflow: hidden;
+}
+
+.doc-viewer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: #ffffff;
+  color: #333;
+  flex-shrink: 0;
+  border-bottom: 1px solid #eee;
+}
+
+.doc-viewer-title {
+  font-weight: 600;
+  color: #333;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+}
+
+.doc-viewer-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.doc-ask-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #2196f3;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.doc-ask-btn:hover:not(:disabled) {
+  background: #1976d2;
+}
+
+.doc-ask-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.doc-viewer-body {
+  flex: 1;
+  overflow: hidden;
+  background: #fafafa;
+}
+
+.doc-loading,
+.doc-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: #666;
+  padding: 60px;
+}
+
+.doc-loading span {
+  font-size: 14px;
+  font-weight: 500;
+  color: #757575;
+}
+
+.doc-error {
+  color: #d32f2f;
+  background: #ffebee;
+  border-radius: 8px;
+  padding: 24px;
+}
+
+.doc-pdf-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.doc-pdf-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+  background: #ffffff;
+  border-bottom: 1px solid #e0e0e0;
+  flex-shrink: 0;
+}
+
+.toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: #f5f5f5;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.toolbar-btn:hover:not(:disabled) {
+  background: #e0e0e0;
+}
+
+.toolbar-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.toolbar-btn svg {
+  stroke: #333;
+}
+
+.page-info,
+.zoom-info {
+  font-size: 13px;
+  color: #555;
+  min-width: 60px;
+  text-align: center;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: #e0e0e0;
+  margin: 0 4px;
+}
+
+.doc-pdf-container {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+  background: #f0f0f0;
+}
+
+.doc-pdf-container .react-pdf__Document {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.doc-pdf-container .react-pdf__Page {
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.doc-pdf-container .react-pdf__Page__textContent {
+  user-select: text;
+}
+
+.doc-pdf-container .react-pdf__Page__textContent span::selection {
+  background: rgba(33, 150, 243, 0.3);
+}
+
+.doc-selection-bar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #ffffff;
+  color: #333;
+  padding: 10px 18px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  z-index: 1001;
+  border: 1px solid #e0e0e0;
+}
+
+.doc-selection-preview {
+  font-size: 13px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #555;
+}
+
+.doc-ask-selection-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #2196f3;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.doc-ask-selection-btn:hover {
+  background: #1976d2;
+}
+
+.doc-close-btn {
+  background: #f5f5f5 !important;
+}
+
+.doc-close-btn svg {
+  stroke: #333 !important;
+  fill: none;
+}
+
+.doc-close-btn:hover {
+  background: #e0e0e0 !important;
+}
+
+.doc-image-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  padding: 16px;
+  overflow: auto;
+}
+
+.doc-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
