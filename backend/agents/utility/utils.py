@@ -3,43 +3,35 @@ Utility functions for agent processing
 """
 from typing import Any, Dict
 
-
 async def call_agent_async(runner, user_id: str, session_id: str, content: Any) -> Dict[str, Any]:
-    """
-    Call the agent asynchronously and process the response
-
-    Args:
-        runner: The ADK Runner instance
-        user_id: User identifier
-        session_id: Session identifier
-        content: The content to send to the agent
-
-    Returns:
-        Dictionary containing the agent's response
-    """
     try:
-        # Execute the agent with the provided content
-        response = await runner.run_async(
+      
+    
+
+        # 1. Start the generator
+        # Note: We use new_messages (plural) to pass our list
+        generator = runner.run_async(
             user_id=user_id,
             session_id=session_id,
-            content=content
+            new_message=content
         )
 
-        # Process the response based on its structure
-        if hasattr(response, 'content'):
-            result = {
-                "response": response.content,
-                "status": "success"
-            }
-        elif isinstance(response, dict):
-            result = response
-        else:
-            result = {
-                "response": str(response),
-                "status": "success"
-            }
+        full_response_text = ""
 
-        return result
+        # 2. FIX THE CHUNK ERROR:
+        # Dig into the object to get only the 'text'
+        async for chunk in generator:
+            if hasattr(chunk, "content") and chunk.content.parts:
+                for part in chunk.content.parts:
+                    if hasattr(part, "text"):
+                        full_response_text += part.text
+            elif isinstance(chunk, str):
+                full_response_text += chunk
+
+        return {
+            "response": full_response_text.strip(),
+            "status": "success"
+        }
 
     except Exception as e:
         print(f"[ERROR] Agent execution failed: {e}")
@@ -49,21 +41,9 @@ async def call_agent_async(runner, user_id: str, session_id: str, content: Any) 
             "error": str(e)
         }
 
-
 async def add_new_session(user_id: str, session_id: str) -> bool:
-    """
-    Add a new session (placeholder for any additional session setup)
-
-    Args:
-        user_id: User identifier
-        session_id: Session identifier
-
-    Returns:
-        Boolean indicating success
-    """
     try:
-        print(
-            f"[INFO] New ADK session created for user {user_id}: {session_id}")
+        print(f"[INFO] New ADK session created for user {user_id}: {session_id}")
         return True
     except Exception as e:
         print(f"[ERROR] Failed to add session: {e}")

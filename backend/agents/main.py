@@ -14,6 +14,9 @@ from google.adk.runners import Runner
 from google.adk.agents import Agent
 from utility import utils
 import uvicorn
+from typing import List
+from PyPDF2 import PdfReader
+
 
 # Agent Imports
 from legal.agent import legal_agent_tool
@@ -99,7 +102,9 @@ def create_agent(agent_type: str) -> Agent:
     return Agent(
         name=f"{agent_type}_agent",
         description=description,
-        tools=tools
+        tools=tools,
+        model="gemini-2.5-flash"
+        
     )
 
 
@@ -217,16 +222,34 @@ async def process_agent_request(
         app_name=APP_NAME,
         session_service=session_service,
     )
+    document_context = ""
+    if file_path and os.path.exists(file_path):
+        try:
+            if file_path.endswith(".pdf"):
+                reader = PdfReader(file_path)
+                document_context = "\n".join([page.extract_text() for page in reader.pages])
+            elif file_path.endswith(".txt"):
+                with open(file_path, "r", encoding="utf-8") as f:
+                    document_context = f.read()
+        except Exception as file_err:
+            print(f"[ERROR] Failed to read file: {file_err}")
+            document_context = "Could not read the document content."
 
+    # Combine the query with the ACTUAL text from the document
     if agent_type.lower() == "general":
         user_prompt = f"User Query: {query}"
     else:
         user_prompt = f"""
-        Please perform a full {agent_type} analysis based on:
-        User Query: "{query}"
+        Analysis Type: {agent_type}
+        
+        DOCUMENT CONTENT:
+        {document_context}
+        
+        USER REQUEST:
+        {query}
         """
-        if file_path:
-            user_prompt += f'\nDocument Path: "{file_path}"'
+    # --- END OF NEW LOGIC ---
+
 
     content = types.Content(
         role="user",
@@ -267,7 +290,8 @@ async def chat(
     username: str = Form(..., description="User's email"),
     question: str = Form(..., description="User's question"),
     sessionId: Optional[str] = Form(None, description="MongoDB Session UUID"),
-    file: Optional[UploadFile] = File(None)
+    files: Optional[List[UploadFile]] = File(None)
+
 ):
     try:
         valid_agents = ["legal", "education", "finance", "general"]
@@ -275,11 +299,15 @@ async def chat(
             raise HTTPException(status_code=400, detail="Invalid agent type")
 
         file_path = None
-        if file:
-            safe_filename = f"{username}_{datetime.now().timestamp()}_{file.filename}"
+        uploaded_file = None
+
+        if files and len(files) > 0:
+            uploaded_file = files[0]   # take first file only
+            safe_filename = (f"{username}_{datetime.now().timestamp()}_{uploaded_file.filename}")
             file_path = os.path.join(UPLOAD_DIR, safe_filename)
             with open(file_path, "wb") as buffer:
-                shutil.copyfileobj(file.file, buffer)
+                shutil.copyfileobj(uploaded_file.file, buffer)
+
 
         # DEBUG: This is where it was failing
         user_id = await get_user_id(username)

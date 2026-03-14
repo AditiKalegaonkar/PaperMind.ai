@@ -1,5 +1,7 @@
 import os
 from dotenv import load_dotenv
+
+
 from langchain_community.vectorstores import FAISS
 from langchain_google_genai import (
     GoogleGenerativeAIEmbeddings,
@@ -184,7 +186,8 @@ Question:
         retriever=retriever,
         return_source_documents=True,
         chain_type_kwargs={"prompt": prompt}
-    )
+    )  
+    print("llm gve summary")
 
     result = retrieval_qa.invoke(
         {"query": "Answer the question as per the context"}
@@ -195,8 +198,4 @@ Question:
     return final_answer
 
 
-# ans = RAG_pipeline(
-# "D:/College-Code/Projects/PaperMind.ai/research-paper/Knowledge-Base/nda.pdf", prompts.LEGAL_RAG)
 
-# with open("output.md", "w", encoding="utf-8") as f:
-# f.write(ans)
