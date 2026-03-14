@@ -287,91 +287,96 @@ export default function UserDashboard() {
 
     simulateProgress(fileIndices);
 
-    try {
-      const form = new FormData();
-      form.append('agent', agent);
-      form.append('question', text);
-      form.append('stream', 'true');
-      if (activeId) form.append('sessionId', activeId);
-      pendingFiles.forEach(f => form.append('files', f));
-      
-      const sessionDocs = sessions.find(s => s.sessionId === (newSessionId || activeId))?.documents || [];
-      sessionDocs.forEach(d => form.append('documents', d));
-
-      const r = await fetch(`${API}/api/chat`, {
-        method: 'POST', credentials: 'include', body: form,
+     let newSessionId = null;
+     try {
+       const form = new FormData();
+       form.append('agent', agent);
+       form.append('question', text);
+       form.append('stream', 'true');
+       if (activeId) form.append('sessionId', activeId);
+       pendingFiles.forEach(f => {
+        form.append('files', f);
+        form.append('documents', f.name);
       });
 
-      finalizeProgress(fileIndices);
+       
+       const sessionDocs = sessions.find(s => s.sessionId === activeId)?.documents || [];
+       sessionDocs.forEach(d => form.append('documents', d));
 
-      if (!r.ok) {
-        const err = await r.json().catch(() => ({}));
-        throw new Error(err.error || `HTTP ${r.status}`);
-      }
+       const r = await fetch(`${API}/api/chat`, {
+         method: 'POST', credentials: 'include', body: form,
+       });
 
-      const newSessionId = r.headers.get('x-session-id') || r.headers.get('X-Session-Id');
-      if (!activeId && newSessionId) {
-        setActiveId(newSessionId);
-      }
+       finalizeProgress(fileIndices);
 
-      const reader   = r.body?.getReader();
-      if (!reader) throw new Error('No response body');
-      const decoder  = new TextDecoder();
-      let   botIndex = null;
-      setStreaming(true);
+       if (!r.ok) {
+         const err = await r.json().catch(() => ({}));
+         throw new Error(err.error || `HTTP ${r.status}`);
+       }
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+       newSessionId = r.headers.get('x-session-id') || r.headers.get('X-Session-Id');
+       if (!activeId && newSessionId) {
+         setActiveId(newSessionId);
+       }
 
-        const lines = decoder.decode(value).split('\n');
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          const token = line.slice(6);
-          if (token === '[DONE]') break;
+       const reader   = r.body?.getReader();
+       if (!reader) throw new Error('No response body');
+       const decoder  = new TextDecoder();
+       let   botIndex = null;
+       setStreaming(true);
 
-          setMessages(prev => {
-            if (botIndex === null) {
-              botIndex = prev.length;
-              return [...prev, { role: 'bot', content: token, ts: new Date().toISOString() }];
-            }
-            return prev.map((m, i) =>
-              i === botIndex ? { ...m, content: m.content + token } : m
-            );
-          });
-        }
-      }
+       while (true) {
+         const { done, value } = await reader.read();
+         if (done) break;
 
-      setStreaming(false);
-      setSending(false);
-      setFiles([]);
-      const uploadedFileNames = uploadedDocs.map(d => d.name);
-      const currentSessionId = newSessionId || activeId;
-      if (currentSessionId) {
-        const newDocs = uploadedFileNames.length > 0 ? [...(sessions.find(s => s.sessionId === currentSessionId)?.documents || []), ...uploadedFileNames] : undefined;
-        setSessions(prev => prev.map(s =>
-          s.sessionId === currentSessionId
-            ? { ...s, lastMessage: { message: text }, updatedAt: new Date().toISOString(), messageCount: (s.messageCount || 0) + 1, documents: newDocs !== undefined ? newDocs : s.documents }
-            : s
-        ));
-        if (uploadedFileNames.length > 0) {
-          updateSessionMetadata(currentSessionId, agent, newDocs);
-        }
-      } else if (newSessionId) {
-        await loadSessions();
-      }
-    } catch (err) {
-      finalizeProgress(fileIndices);
-      setSending(false);
-      setStreaming(false);
-      setFiles([]);
-      setUploadedDocs([]);
-      setMessages(prev => [...prev, {
-        role: 'bot', content: `⚠ ${err.message}`, ts: new Date().toISOString(), isError: true,
-      }]);
-    } finally {
-      setTimeout(() => textarea.current?.focus(), 50);
-    }
+         const lines = decoder.decode(value).split('\n');
+         for (const line of lines) {
+           if (!line.startsWith('data: ')) continue;
+           const token = line.slice(6);
+           if (token === '[DONE]') break;
+
+           setMessages(prev => {
+             if (botIndex === null) {
+               botIndex = prev.length;
+               return [...prev, { role: 'bot', content: token, ts: new Date().toISOString() }];
+             }
+             return prev.map((m, i) =>
+               i === botIndex ? { ...m, content: m.content + token } : m
+             );
+           });
+         }
+       }
+
+       setStreaming(false);
+       setSending(false);
+       setFiles([]);
+       const uploadedFileNames = uploadedDocs.map(d => d.name);
+       const currentSessionId = newSessionId || activeId;
+       if (currentSessionId) {
+         const newDocs = uploadedFileNames.length > 0 ? [...(sessions.find(s => s.sessionId === currentSessionId)?.documents || []), ...uploadedFileNames] : undefined;
+         setSessions(prev => prev.map(s =>
+           s.sessionId === currentSessionId
+             ? { ...s, lastMessage: { message: text }, updatedAt: new Date().toISOString(), messageCount: (s.messageCount || 0) + 1, documents: newDocs !== undefined ? newDocs : s.documents }
+             : s
+         ));
+         if (uploadedFileNames.length > 0) {
+           updateSessionMetadata(currentSessionId, agent, newDocs);
+         }
+       } else if (newSessionId) {
+         await loadSessions();
+       }
+     } catch (err) {
+       finalizeProgress(fileIndices);
+       setSending(false);
+       setStreaming(false);
+       setFiles([]);
+       setUploadedDocs([]);
+       setMessages(prev => [...prev, {
+         role: 'bot', content: `⚠ ${err.message}`, ts: new Date().toISOString(), isError: true,
+       }]);
+     } finally {
+       setTimeout(() => textarea.current?.focus(), 50);
+     }
   };
 
   const handleKey = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } };

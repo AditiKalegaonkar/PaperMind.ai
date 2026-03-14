@@ -19,10 +19,11 @@ from google.adk.agents import Agent
 from utility import utils
 import uvicorn
 
-from legal.agent import legal_agent_tool
-from education.agent import education_agent_tool
-from finance.agent import finance_agent_tool
-from general.rag_agent import general_rag_agent_tool
+from legal.agent import legal_agent, legal_agent_tool
+from education.agent import education_agent, education_agent_tool
+from finance.agent import finance_agent, finance_agent_tool
+from general.rag_agent import general_rag_agent, general_rag_agent_tool
+from fastapi.responses import JSONResponse
 
 load_dotenv()
 
@@ -35,7 +36,7 @@ logging.basicConfig(
 log = logging.getLogger("papermind")
 
 # ── MongoDB ───────────────────────────────────────────────────────────────────
-MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
+MONGODB_URL = os.getenv("MONGODB_URL")
 client = motor.motor_asyncio.AsyncIOMotorClient(MONGODB_URL)
 try:
     db = client.get_default_database()
@@ -48,8 +49,9 @@ users_collection = db.users
 chats_collection = db.chats
 
 # ── ADK session service (SQLite) ──────────────────────────────────────────────
-db_url = "sqlite+aiosqlite:///chat2.db"
-session_service = DatabaseSessionService(db_url=db_url)
+# Will be initialized in lifespan
+session_service: Optional[DatabaseSessionService] = None
+SESSION_DB_URL = "sqlite+aiosqlite:///chat2.db"
 APP_NAME = "PaperMind"
 
 UPLOAD_DIR = "uploaded_files"
@@ -60,6 +62,15 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 # NOTE: lifespan MUST be defined before app = FastAPI(lifespan=lifespan)
 @asynccontextmanager
 async def lifespan(app: "FastAPI"):
+    # Initialize ADK session service
+    global session_service
+    try:
+        session_service = DatabaseSessionService(SESSION_DB_URL)
+        log.info("ADK Session service initialized")
+    except Exception as e:
+        log.error(f"Failed to initialize ADK session service: {e}")
+        session_service = None
+    
     # Create compound index on startup (idempotent — safe to re-run)
     await chats_collection.create_index(
         [("userId", 1), ("sessions.sessionId", 1)],
@@ -82,57 +93,63 @@ app.add_middleware(
 )
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
-def _get_tools(agent_type: str) -> list:
-    return {
-        "general":   [general_rag_agent_tool],
-        "legal":     [legal_agent_tool],
-        "education": [education_agent_tool],
-        "finance":   [finance_agent_tool],
-    }.get(agent_type.lower(), [])
+# ── Agent Cache ─────────────────────────────────────────────────────────────────
+_cached_agents: dict = {}
+_cached_runners: dict = {}
 
 
-def _create_agent(agent_type: str) -> Agent:
-    if agent_type.lower() == "general":
-        desc = """You are a helpful general assistant that can analyze documents and answer questions.
-        
-        When a user uploads a document:
-        1. Extract the file path from the user's message (the path is provided in the prompt)
-        2. Use the file_path tool to store the path
-        3. Then use execute_rag_pipeline tool to analyze the document
-        4. Present the analysis to the user
-        
-        If no document is uploaded, just answer the question directly.
-        Be clear, concise, and professional."""
-    elif agent_type.lower() == "education":
-        desc = """You are an education-focused assistant that helps users learn from documents.
-        
-        When a user uploads a document:
-        1. Extract the file path from the user's message
-        2. Use the file_path tool to store the path
-        3. Use execute_rag_pipeline to analyze the document
-        4. Store the summary in session state
-        
-        Then you can help with flashcards or quizzes based on the document.
-        Use only the provided document context."""
-    elif agent_type.lower() == "finance":
-        desc = """You are a finance-focused assistant that analyzes financial documents.
-        
-        When a user uploads a document:
-        1. Extract the file path from the user's message
-        2. Use the file_path tool to store the path
-        3. Use execute_rag_pipeline to analyze the document
-        4. Present financial insights from the document
-        
-        Use only the provided document context. Do not give personalized financial advice."""
+def _get_agent(agent_type: str) -> Optional[Agent]:
+    """
+    Get the pre-built agent from domain folders.
+    Agents are cached and reused - never recreated.
+    """
+    agent_type_lower = agent_type.lower()
+    
+    if agent_type_lower in _cached_agents:
+        return _cached_agents[agent_type_lower]
+    
+    agent = {
+        "general": general_rag_agent,
+        "legal": legal_agent,
+        "education": education_agent,
+        "finance": finance_agent,
+    }.get(agent_type_lower)
+    
+    if agent:
+        _cached_agents[agent_type_lower] = agent
+        log.info(f"Cached {agent_type_lower} agent")
+    
+    return agent
+
+
+def _get_runner(agent_type: str) -> Runner:
+    """
+    Get or create a cached Runner for the given agent type.
+    Runners are cached to maintain session state across requests.
+    """
+    agent_type_lower = agent_type.lower()
+    
+    if agent_type_lower in _cached_runners:
+        return _cached_runners[agent_type_lower]
+    
+    agent = _get_agent(agent_type_lower)
+    if not agent:
+        raise ValueError(f"Unknown agent type: {agent_type}")
+    
+    # If session_service is available, use it; otherwise create runner without it
+    # Note: Runner requires session_service, so we'll create a simple in-memory one if needed
+    if session_service:
+        runner = Runner(agent=agent, app_name=APP_NAME, session_service=session_service)
     else:
-        desc = (
-            f"You are a {agent_type} document assistant. "
-            "Use only the provided document context. "
-            "Do not invent facts. If info is missing, say so."
-        )
-    return Agent(name=f"{agent_type}_agent", description=desc, tools=_get_tools(agent_type))
+        # Create a temporary in-memory session service for the runner
+        from google.adk.sessions import InMemorySessionService
+        temp_session_service = InMemorySessionService()
+        runner = Runner(agent=agent, app_name=APP_NAME, session_service=temp_session_service)
+    
+    _cached_runners[agent_type_lower] = runner
+    log.info(f"Cached {agent_type_lower} runner")
+    
+    return runner
 
 
 async def _get_user_id(username: str) -> ObjectId:
@@ -154,17 +171,35 @@ async def _ensure_chat_doc(user_id: ObjectId) -> dict:
         doc["_id"] = result.inserted_id
     return doc
 
-
 async def _create_adk_session(username: str) -> str:
-    """Create ADK session in SQLite, register it, return its ID."""
-    session = await session_service.create_session(
-        app_name=APP_NAME,
-        user_id=username,
-        state={"user_name": username},
-    )
-    await utils.add_new_session(username, session.id)
-    log.info("Created ADK session %s for %s", session.id, username)
-    return session.id
+    """Create a new ADK session for the user."""
+    if not session_service:
+        # Fallback: use username + timestamp as session ID
+        fallback_id = f"{username}_{datetime.now().timestamp()}"
+        log.warning("Session service unavailable, using fallback session ID: %s", fallback_id)
+        return fallback_id
+    
+    try:
+            session = await session_service.create_session(
+                app_name=APP_NAME,
+                user_id=username,
+                state={"user_name": username},
+            )
+            if not session or not session.id:
+                raise RuntimeError("Failed to create ADK session")
+
+            try:
+                await utils.add_new_session(username, session.id)
+            except Exception as e:
+                log.error(f"Failed to add new session to utility: {e}")
+
+            log.info("Created ADK session %s for %s", session.id, username)
+            return session.id
+    except Exception as e:
+        log.error(f"Error creating ADK session: {e}")
+        # Fallback: use username + timestamp as session ID
+        fallback_id = f"{username}_{datetime.now().timestamp()}"
+        return fallback_id
 
 
 async def _add_session_to_mongo(user_id: ObjectId, chat_id: str, adk_id: str, agent: str = "general"):
@@ -222,46 +257,63 @@ async def _save_message(user_id: ObjectId, chat_id: str, message: str, answer: s
         },
     )
 
+def read_file_content(path: str) -> str:
+    try:
+        with open(path, "r", encoding="utf-8", errors="ignore") as f:
+            return f.read()
+    except Exception as e:
+        log.error(f"Failed to read file {path}: {e}")
+        return ""
+
 
 async def _process(
     agent_type: str, username: str, adk_id: str, query: str, file_paths: List[str]
 ) -> str:
-    agent  = _create_agent(agent_type)
-    runner = Runner(agent=agent, app_name=APP_NAME, session_service=session_service)
 
-    if agent_type.lower() == "general":
-        prompt = f"User Query: {query}"
-        if file_paths:
-            prompt += "\nDocument Paths:\n" + "\n".join(f'- "{p}"' for p in file_paths)
-    else:
-        prompt = f'Please perform a full {agent_type} analysis.\nUser Query: "{query}"'
-        if file_paths:
-            prompt += "\nDocument Paths:\n" + "\n".join(f'- "{p}"' for p in file_paths)
+    runner = _get_runner(agent_type)
 
+    prompt = f"User Query: {query}"
+
+    if file_paths:
+        prompt += "\n\nDocuments:\n"
+        for p in file_paths:
+            content = read_file_content(p)
+            prompt += f"""\nDocument ({os.path.basename(p)}):\n{content}\n"""
+    
     content = types.Content(role="user", parts=[types.Part(text=prompt)])
-    try:
-        result = await utils.call_agent_async(runner, username, adk_id)
-        return result.get("response", str(result)) if isinstance(result, dict) else str(result)
-    except Exception as e:
-        log.error("Agent processing failed for %s: %s", username, e)
-        return f"Error processing request: {e}"
+    result_text = ""
+
+    async for chunk in runner.run_async(
+        user_id=username,
+        session_id=adk_id,
+        new_message=content
+    ):
+        if hasattr(chunk, "content") and chunk.content:
+            if hasattr(chunk.content, "parts") and chunk.content.parts:
+                for part in chunk.content.parts:
+                    if hasattr(part, "text") and part.text:
+                        result_text += part.text
+
+    return result_text
 
 
 async def _stream_process(
     agent_type: str, username: str, adk_id: str, query: str, file_paths: List[str]
 ) -> AsyncGenerator[str, None]:
     """Yield SSE lines `data: <token>\n\n`. Falls back to one-shot if run_stream unavailable."""
-    agent  = _create_agent(agent_type)
-    runner = Runner(agent=agent, app_name=APP_NAME, session_service=session_service)
+    runner = _get_runner(agent_type)
 
     if agent_type.lower() == "general":
         prompt = f"User Query: {query}"
-        if file_paths:
-            prompt += "\nDocument Paths:\n" + "\n".join(f'- "{p}"' for p in file_paths)
     else:
         prompt = f'Please perform a full {agent_type} analysis.\nUser Query: "{query}"'
-        if file_paths:
-            prompt += "\nDocument Paths:\n" + "\n".join(f'- "{p}"' for p in file_paths)
+
+    if file_paths:
+        prompt += "\n\nDocuments:\n"
+        for p in file_paths:
+            content = read_file_content(p)
+            prompt += f"""
+            \nDocument ({os.path.basename(p)}):\n{content}\n"""
 
     content = types.Content(role="user", parts=[types.Part(text=prompt)])
     try:
@@ -336,7 +388,7 @@ async def chat(
     await _ensure_chat_doc(user_id)
 
     # ── Session resolution ─────────────────────────────────────────────────────
-    if sessionId:
+    if sessionId is not None and sessionId != "":
         active_chat_id = sessionId
         adk_id = await _get_adk_id(user_id, active_chat_id)
         if not adk_id:
@@ -357,7 +409,9 @@ async def chat(
             async for chunk in _stream_process(agent, username, adk_id, question, file_paths):
                 if chunk != "data: [DONE]\n\n":
                     # Strip the `data: ` prefix (6 chars) and trailing newlines
-                    collected.append(chunk[6:].rstrip("\n"))
+                    #collected.append(chunk[6:].rstrip("\n"))
+                    payload = chunk.replace("data: ","").strip()
+                    collected.append(payload)
                 yield chunk
             await _save_message(user_id, active_chat_id, question, "".join(collected))
 
@@ -376,12 +430,20 @@ async def chat(
     await _save_message(user_id, active_chat_id, question, answer)
     log.info("Returning response: %s", answer[:200])
 
-    return {
-        "sessionId":    active_chat_id,
-        "adkSessionId": adk_id,
-        "response":       answer,
-        "timestamp":    datetime.now().isoformat(),
-    }
+    from fastapi.responses import JSONResponse
+
+    return JSONResponse(
+        content={
+            "sessionId": active_chat_id,
+            "adkSessionId": adk_id,
+            "response": answer,
+            "timestamp": datetime.now().isoformat()
+        },
+        headers={
+            "X-Session-Id": active_chat_id,
+            "X-Adk-Session-Id": adk_id
+        }
+    )
 
 
 @app.patch("/chat/{username}/{session_id}/rename")

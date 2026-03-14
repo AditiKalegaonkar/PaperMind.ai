@@ -30,7 +30,7 @@ def main():
 
     nda_relevant_chunks = [
         "The Receiving Party shall refrain from disclosing Confidential Information.",
-        "The Parties shall protect the confidentiality of each other’s Confidential Information.",
+        "The Parties shall protect the confidentiality of each other's Confidential Information.",
         "Within seven (7) days of a written request the Receiving Party shall return/destroy Confidential Information.",
         "The Receiving Party may disclose Confidential Information to the extent required by law."
     ]
@@ -150,7 +150,7 @@ def main():
 
     nda_misc_relevant_chunks = [
         "The Receiving Party shall refrain from disclosing Confidential Information.",
-        "The Parties shall protect the confidentiality of each other’s Confidential Information.",
+        "The Parties shall protect the confidentiality of each other's Confidential Information.",
         "Confidential Information shall at all times remain the property of the Disclosing Party.",
         "The non-breaching party is entitled to seek injunctive relief."
     ]
