@@ -116,7 +116,7 @@ mongoose
 // ───────────────── Auth routes ─────────────────
 app.post("/auth/register", authLimiter, async (req, res) => {
   try {
-    const { firstName, lastName, email, password } = req.body;
+    const { firstName, lastName, email, password, phone, countryCode } = req.body;
 
     if (!firstName || !email || !password)
       return res.status(400).json({ error: "Missing fields" });
@@ -131,10 +131,13 @@ app.post("/auth/register", authLimiter, async (req, res) => {
       lastName,
       email,
       password: hashed,
+      phone,
+      countryCode
     }).save();
 
     res.status(201).json({ message: "Account created" });
-  } catch {
+  } catch (err) {
+    console.error("Register error:", err);
     res.status(500).json({ error: "Registration failed" });
   }
 });
