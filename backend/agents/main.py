@@ -278,7 +278,7 @@ async def _process(
         prompt += "\n\nDocuments:\n"
         for p in file_paths:
             content = read_file_content(p)
-            prompt += f"""\nDocument ({os.path.basename(p)}):\n{content}\n"""
+            prompt += f"""\nDocument ({p}):\n{content}\n"""
     
     content = types.Content(role="user", parts=[types.Part(text=prompt)])
     result_text = ""
@@ -313,7 +313,7 @@ async def _stream_process(
         for p in file_paths:
             content = read_file_content(p)
             prompt += f"""
-            \nDocument ({os.path.basename(p)}):\n{content}\n"""
+            \nFile path({p}):\n{content}\n"""
 
     content = types.Content(role="user", parts=[types.Part(text=prompt)])
     try:
@@ -322,19 +322,24 @@ async def _stream_process(
             session_id=adk_id,
             new_message=content
         ):
+            log.info("Chunk: %s", chunk)
             text = ""
-            if hasattr(chunk, "content") and chunk.content:
-                content_obj = chunk.content
-                if hasattr(content_obj, "parts") and content_obj.parts:
-                    for part in content_obj.parts:
-                        if hasattr(part, "text") and part.text:
-                            text += part.text
-                        elif hasattr(part, "thought") and part.thought:
-                            pass
-                else:
-                    text = str(content_obj)
-            else:
-                text = str(chunk)
+            try:
+                if hasattr(chunk, "content") and chunk.content:
+                    for part in getattr(chunk.content, "parts", []):
+
+                        # tool result
+                        if hasattr(part, "function_response") and part.function_response:
+                            response = part.function_response.response
+                            if isinstance(response, dict):
+                                text = response.get("result", "")
+
+                        # normal model text
+                        elif hasattr(part, "text") and part.text:
+                            text = part.text
+
+            except Exception as e:
+                log.error("Chunk parse error: %s", e)
 
             if text:
                 yield f"data: {text}\n\n"

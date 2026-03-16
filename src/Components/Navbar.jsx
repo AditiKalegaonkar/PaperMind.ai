@@ -1,11 +1,12 @@
 import './Navbar.css';
 import { Link } from 'react-router-dom';
+import Logo from '../assets/Logo.png';
 function Navbar() {
   return (
     <nav className='quicksand'>
       <div className='Home'>
         {/* Use a correct relative path to the logo asset */}
-        <img src="../assets/Logo.png"  alt="App Logo" style={{height: "40px", width: "40px", borderRadius : "4px"}} />
+        <img src={Logo}  alt="App Logo" style={{height: "40px", width: "40px", borderRadius : "4px"}} />
         <p style={{fontSize:"20px"}}>PaperMind.ai</p>
       </div>
       <div className='Pages'>

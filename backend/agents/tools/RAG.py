@@ -86,7 +86,7 @@ def _get_or_build_index(path: str, embeddings) -> FAISS:
 
 
 def run_rag_pipeline(user_path: str, init_prompt: str) -> str:
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+    embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
     db = _get_or_build_index(user_path, embeddings)
 
     retriever = db.as_retriever(

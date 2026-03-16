@@ -777,26 +777,43 @@ textarea { font-family: inherit; }
   width: 36px;
   height: 36px;
   border-radius: 10px;
+  color:white;
   background: var(--primary);
-  color: #fff;
   flex-shrink: 0;
   transition: all .15s;
   align-self: flex-end;
   box-shadow: 0 2px 8px rgba(82, 95, 225, 0.3);
 }
-.pm-send svg {
-  stroke: #fff;
-  fill: none;
+.send-icon {
+  fill:none;
+  stroke: var(--bg);
+}
+.send-icon{
+  fill:none;
+  stroke: var(--bg);
 }
 .pm-send:hover:not(:disabled) { 
   background: var(--primary-dark); 
   box-shadow: 0 2px 12px rgba(58, 68, 153, 0.4); 
 }
 .pm-send:hover:not(:disabled) svg {
-  stroke: #fff;
+  stroke: red;
 }
-.pm-send--off { opacity: .4; cursor: not-allowed; background: var(--border); box-shadow: none; }
-
+.pm-send--off {
+  opacity: .4;
+  cursor: not-allowed;
+  background:var(--border);
+  box-shadow: none;
+}
+.pm-send--off svg{
+  stroke:red;
+}
+.pm-hint {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 6px;
+  text-align: center;
+}
 .pm-hint { font-size: 11px; color: var(--muted); margin-top: 6px; text-align: center; }
 
 /* Document Sidebar - RIGHT SIDE */
@@ -877,7 +894,7 @@ textarea { font-family: inherit; }
 }
 
 .pm-doc-toggle {
-  color: rgba(255,255,255,0.8);
+  color:white;
   padding: 4px;
   border-radius: 4px;
   display: flex;
@@ -885,8 +902,7 @@ textarea { font-family: inherit; }
   transition: color .15s, background .15s;
 }
 .pm-doc-toggle svg {
-  stroke: rgba(255,255,255,0.8);
-  fill: none;
+  stroke: gray;
 }
 .pm-doc-toggle:hover { color: #fff; background: rgba(255,255,255,0.2); }
 .pm-doc-toggle:hover svg { stroke: #fff; }
