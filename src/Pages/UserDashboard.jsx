@@ -14,13 +14,16 @@ const AGENTS = [
 ];
 const DEMO_MODE = import.meta?.env?.VITE_DEMO_MODE === 'true';
 
-const Svg = ({ children, size = 18 }) => (
+const Svg = ({ children, size = 18, className, ...rest }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    {children}
-  </svg>
+  stroke="currentColor" strokeWidth="2" className={className} {...rest}>{children}</svg>
 );
-const SendIcon   = () => <Svg><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></Svg>;
+const SendIcon = () => (
+  <Svg strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="22" y1="2" x2="11" y2="13" />
+    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+  </Svg>
+);
 const PlusIcon   = () => <Svg><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></Svg>;
 const BotIcon    = () => <Svg size={16}><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="3"/></Svg>;
 const UserIcon   = () => <Svg size={20}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></Svg>;
@@ -34,7 +37,6 @@ const PencilIcon = () => <Svg size={13}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 
 const TrashIcon  = () => <Svg size={13}><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></Svg>;
 const CheckIcon  = () => <Svg size={13}><polyline points="20 6 9 17 4 12"/></Svg>;
 const ChevronLeftIcon = () => <Svg><polyline points="15 18 9 12 15 6"/></Svg>;
-const ChevronRightIcon = () => <Svg><polyline points="9 18 15 12 9 6"/></Svg>;
 const FileTextIcon = () => <Svg><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><path d="M10 9 9 9 8 9"/></Svg>;
 const SearchIcon = () => <Svg size={14}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></Svg>;
 
@@ -619,7 +621,7 @@ export default function UserDashboard() {
                 disabled={busy}
               >
                 {AGENTS.map(a => (
-                  <option key={a.id} value={a.id}>
+                  <option key={a.id} value={a.id} className="quicksand">
                     {a.name}
                   </option>
                 ))}
@@ -700,10 +702,10 @@ export default function UserDashboard() {
               title="Attach files (or drag & drop)"><ClipIcon/></button>
             <textarea ref={textarea} className="pm-textarea" value={input}
               onChange={e => setInput(e.target.value)} onKeyDown={handleKey}
-              placeholder="Ask anything… or drop files anywhere" disabled={busy} rows={1}/>
+              placeholder="Ask anything… or drop files anywhere" disabled={busy} rows={1} align="center"/>
             <button
               className={`pm-send ${(!input.trim() && files.length === 0) || busy ? 'pm-send--off' : ''}`}
-              onClick={send} disabled={busy}>
+              onClick={send} disabled={busy || (!input.trim() && files.length === 0)}>
               {streaming ? <Dots/> : <SendIcon/>}
             </button>
           </div>

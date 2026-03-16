@@ -207,7 +207,7 @@ def run_qdrant_rag(user_path: str, init_prompt: str) -> str:
         from langchain_core.runnables import RunnablePassthrough
         from langchain_core.output_parsers import StrOutputParser
         
-        embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+        embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
         
         db = _get_or_build_qdrant_index(user_path, embeddings)
         
