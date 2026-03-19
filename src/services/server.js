@@ -53,6 +53,9 @@ app.use(
   cors({
     origin: [FRONTEND_URL],
     credentials: true,
+    // FIX: explicitly expose the session-id headers so the browser's
+    // fetch/XHR can read them from response.headers.get(...)
+    exposedHeaders: ["X-Session-Id", "X-Adk-Session-Id"],
   })
 );
 
@@ -132,7 +135,7 @@ app.post("/auth/register", authLimiter, async (req, res) => {
       email,
       password: hashed,
       phone,
-      countryCode
+      countryCode,
     }).save();
 
     res.status(201).json({ message: "Account created" });
@@ -172,6 +175,9 @@ app.get("/auth/logout", (req, res) => {
 });
 
 // ───────────────── File cleanup helper ─────────────────
+// FIX: Only clean files AFTER the proxy response has fully ended.
+// Previously cleanFiles was called inside the proxyRes callback (before
+// the stream finished), which could cause read errors on some OS configs.
 const cleanFiles = (files) => {
   if (!files) return;
   files.forEach((f) => {
@@ -181,7 +187,7 @@ const cleanFiles = (files) => {
   });
 };
 
-// ───────────────── CHAT ROUTE (STREAMING SAFE) ─────────────────
+// ───────────────── CHAT ROUTE ─────────────────
 app.post(
   "/api/chat",
   requireAuth,
@@ -201,10 +207,12 @@ app.post(
     form.append("username", req.currentUser.email);
     form.append("question", question);
 
-    //if (sessionId) form.append("sessionId", sessionId);
-    if (typeof sessionId === "string" && sessionId.length > 0) {
-      form.append("sessionId", sessionId);
+    // FIX: Always forward sessionId when present so FastAPI reuses the
+    // existing session instead of creating a new one on every message.
+    if (typeof sessionId === "string" && sessionId.trim().length > 0) {
+      form.append("sessionId", sessionId.trim());
     }
+
     if (stream) form.append("stream", stream);
 
     (req.files || []).forEach((f) => {
@@ -226,19 +234,28 @@ app.post(
     };
 
     const proxyReq = http.request(options, (proxyRes) => {
-      cleanFiles(req.files);
+      const blocked = new Set(["connection", "transfer-encoding", "keep-alive"]);
 
-      const blocked = new Set(["connection","transfer-encoding","keep-alive"]);
-
-      for (const [key,value] of Object.entries(proxyRes.headers)) {
+      for (const [key, value] of Object.entries(proxyRes.headers)) {
         if (!blocked.has(key.toLowerCase())) {
-          res.setHeader(key,value);
+          res.setHeader(key, value);
         }
       }
 
+      // FIX: Also forward the custom session-id headers that FastAPI sets,
+      // so the browser can read them even when streaming.
+      const sessionIdHeader = proxyRes.headers["x-session-id"];
+      const adkHeader = proxyRes.headers["x-adk-session-id"];
+      if (sessionIdHeader) res.setHeader("X-Session-Id", sessionIdHeader);
+      if (adkHeader) res.setHeader("X-Adk-Session-Id", adkHeader);
+
+      // FIX: statusCode MUST be set before flushHeaders — once headers are
+      // flushed the status line is already on the wire and cannot be changed.
+      res.statusCode = proxyRes.statusCode;
       res.flushHeaders();
 
-      res.statusCode = proxyRes.statusCode;
+      // Clean temp files only after the response stream has fully ended
+      proxyRes.on("end", () => cleanFiles(req.files));
 
       proxyRes.pipe(res);
     });
@@ -246,18 +263,14 @@ app.post(
     proxyReq.on("error", (err) => {
       cleanFiles(req.files);
       console.error("Chat proxy error:", err.message);
-
       if (!res.headersSent) {
-        res.status(500).json({
-          error: "Chat service failed",
-        });
+        res.status(500).json({ error: "Chat service failed" });
       }
     });
 
     proxyReq.on("timeout", () => {
       proxyReq.destroy();
       cleanFiles(req.files);
-
       if (!res.headersSent) {
         res.status(504).json({ error: "FastAPI timeout" });
       }
@@ -287,7 +300,6 @@ app.get("/api/chat/:sessionId", requireAuth, async (req, res) => {
         req.currentUser.email
       )}/${encodeURIComponent(req.params.sessionId)}`
     );
-
     res.json(r.data);
   } catch {
     res.json({ messages: [] });
@@ -310,6 +322,25 @@ app.patch("/api/chat/:sessionId/metadata", requireAuth, async (req, res) => {
   }
 });
 
+// ───────────────── Rename session ─────────────────
+app.patch("/api/chat/:sessionId/rename", requireAuth, async (req, res) => {
+  const { title } = req.body;
+  try {
+    const form = new URLSearchParams();
+    form.append("title", title);
+    const r = await axios.patch(
+      `${FASTAPI_URL}/chat/${encodeURIComponent(
+        req.currentUser.email
+      )}/${encodeURIComponent(req.params.sessionId)}/rename`,
+      form.toString(),
+      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+    );
+    res.json(r.data);
+  } catch {
+    res.json({ success: false });
+  }
+});
+
 // ───────────────── Delete session ─────────────────
 app.delete("/api/chat/:sessionId", requireAuth, async (req, res) => {
   try {
@@ -318,7 +349,6 @@ app.delete("/api/chat/:sessionId", requireAuth, async (req, res) => {
         req.currentUser.email
       )}/${encodeURIComponent(req.params.sessionId)}`
     );
-
     res.json(r.data);
   } catch {
     res.status(500).json({ error: "Delete failed" });

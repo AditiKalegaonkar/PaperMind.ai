@@ -5,6 +5,7 @@ import Contacts from "./Pages/Contacts.jsx";
 import Login from "./Pages/Login.jsx"; 
 import SignUp from "./Pages/SignUp.jsx";
 import UserDashboard from "./Pages/UserDashboard.jsx";
+import FlashcardsPage from "./Components/FlashcardsPage.jsx";
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<SignUp />} />
       <Route path="/userDashboard" element={<UserDashboard />} />
+      <Route path="/flashcards" element={<FlashcardsPage />} />
     </Routes>
   );
 }
