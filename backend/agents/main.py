@@ -49,20 +49,21 @@ users_collection = db.users
 chats_collection = db.chats
 
 # ── ADK session service (SQLite) ──────────────────────────────────────────────
-# Will be initialized in lifespan
 session_service: Optional[DatabaseSessionService] = None
 SESSION_DB_URL = "sqlite+aiosqlite:///chat2.db"
 APP_NAME = "PaperMind"
 
-UPLOAD_DIR = "uploaded_files"
+# FIX #1: Single canonical upload directory resolved to absolute path.
+# Previously UPLOAD_DIR was a relative "uploaded_files" which resolved
+# differently depending on the CWD at startup, causing files to be saved
+# in one place but looked up from another (the two-directory bug).
+UPLOAD_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "uploaded_files"))
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
-# ── Lifespan: startup tasks ────────────────────────────────────────────────────
-# NOTE: lifespan MUST be defined before app = FastAPI(lifespan=lifespan)
+# ── Lifespan ──────────────────────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: "FastAPI"):
-    # Initialize ADK session service
     global session_service
     try:
         session_service = DatabaseSessionService(SESSION_DB_URL)
@@ -70,8 +71,7 @@ async def lifespan(app: "FastAPI"):
     except Exception as e:
         log.error(f"Failed to initialize ADK session service: {e}")
         session_service = None
-    
-    # Create compound index on startup (idempotent — safe to re-run)
+
     await chats_collection.create_index(
         [("userId", 1), ("sessions.sessionId", 1)],
         name="userId_sessionId",
@@ -89,67 +89,42 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["X-Session-Id", "X-Adk-Session-Id"],  # needed so browser can read them
+    expose_headers=["X-Session-Id", "X-Adk-Session-Id"],
 )
 
 
-# ── Agent Cache ─────────────────────────────────────────────────────────────────
+# ── Agent cache ───────────────────────────────────────────────────────────────
 _cached_agents: dict = {}
-_cached_runners: dict = {}
 
 
 def _get_agent(agent_type: str) -> Optional[Agent]:
-    """
-    Get the pre-built agent from domain folders.
-    Agents are cached and reused - never recreated.
-    """
     agent_type_lower = agent_type.lower()
-    
     if agent_type_lower in _cached_agents:
         return _cached_agents[agent_type_lower]
-    
     agent = {
         "general": general_rag_agent,
         "legal": legal_agent,
         "education": education_agent,
         "finance": finance_agent,
     }.get(agent_type_lower)
-    
     if agent:
         _cached_agents[agent_type_lower] = agent
         log.info(f"Cached {agent_type_lower} agent")
-    
     return agent
 
 
 def _get_runner(agent_type: str) -> Runner:
-    """
-    Get or create a cached Runner for the given agent type.
-    Runners are cached to maintain session state across requests.
-    """
     agent_type_lower = agent_type.lower()
-    
-    if agent_type_lower in _cached_runners:
-        return _cached_runners[agent_type_lower]
-    
     agent = _get_agent(agent_type_lower)
     if not agent:
         raise ValueError(f"Unknown agent type: {agent_type}")
-    
-    # If session_service is available, use it; otherwise create runner without it
-    # Note: Runner requires session_service, so we'll create a simple in-memory one if needed
+    # FIX: Do NOT cache runners. A cached runner built before session_service
+    # was ready uses InMemorySessionService permanently, losing all session
+    # history. Runners are lightweight — creating one per request is correct.
     if session_service:
-        runner = Runner(agent=agent, app_name=APP_NAME, session_service=session_service)
-    else:
-        # Create a temporary in-memory session service for the runner
-        from google.adk.sessions import InMemorySessionService
-        temp_session_service = InMemorySessionService()
-        runner = Runner(agent=agent, app_name=APP_NAME, session_service=temp_session_service)
-    
-    _cached_runners[agent_type_lower] = runner
-    log.info(f"Cached {agent_type_lower} runner")
-    
-    return runner
+        return Runner(agent=agent, app_name=APP_NAME, session_service=session_service)
+    from google.adk.sessions import InMemorySessionService
+    return Runner(agent=agent, app_name=APP_NAME, session_service=InMemorySessionService())
 
 
 async def _get_user_id(username: str) -> ObjectId:
@@ -171,35 +146,29 @@ async def _ensure_chat_doc(user_id: ObjectId) -> dict:
         doc["_id"] = result.inserted_id
     return doc
 
+
 async def _create_adk_session(username: str) -> str:
-    """Create a new ADK session for the user."""
     if not session_service:
-        # Fallback: use username + timestamp as session ID
         fallback_id = f"{username}_{datetime.now().timestamp()}"
-        log.warning("Session service unavailable, using fallback session ID: %s", fallback_id)
+        log.warning("Session service unavailable, fallback: %s", fallback_id)
         return fallback_id
-    
     try:
-            session = await session_service.create_session(
-                app_name=APP_NAME,
-                user_id=username,
-                state={"user_name": username},
-            )
-            if not session or not session.id:
-                raise RuntimeError("Failed to create ADK session")
-
-            try:
-                await utils.add_new_session(username, session.id)
-            except Exception as e:
-                log.error(f"Failed to add new session to utility: {e}")
-
-            log.info("Created ADK session %s for %s", session.id, username)
-            return session.id
+        session = await session_service.create_session(
+            app_name=APP_NAME,
+            user_id=username,
+            state={"user_name": username},
+        )
+        if not session or not session.id:
+            raise RuntimeError("Failed to create ADK session")
+        try:
+            await utils.add_new_session(username, session.id)
+        except Exception as e:
+            log.error(f"Failed to add new session to utility: {e}")
+        log.info("Created ADK session %s for %s", session.id, username)
+        return session.id
     except Exception as e:
         log.error(f"Error creating ADK session: {e}")
-        # Fallback: use username + timestamp as session ID
-        fallback_id = f"{username}_{datetime.now().timestamp()}"
-        return fallback_id
+        return f"{username}_{datetime.now().timestamp()}"
 
 
 async def _add_session_to_mongo(user_id: ObjectId, chat_id: str, adk_id: str, agent: str = "general"):
@@ -214,6 +183,10 @@ async def _add_session_to_mongo(user_id: ObjectId, chat_id: str, adk_id: str, ag
                     "title": None,
                     "messages": [],
                     "documents": [],
+                    # FIX #2: store file_paths list per session so uploaded
+                    # files are remembered across follow-up messages in the
+                    # same chat without re-uploading.
+                    "filePaths": [],
                     "createdAt": datetime.now(),
                     "updatedAt": datetime.now(),
                 }
@@ -241,6 +214,30 @@ async def _update_adk_id(user_id: ObjectId, chat_id: str, adk_id: str):
     )
 
 
+# FIX #2 helpers: read / append stored file paths for a session
+async def _get_session_file_paths(user_id: ObjectId, chat_id: str) -> List[str]:
+    """Return the list of absolute file paths stored for this session."""
+    doc = await chats_collection.find_one(
+        {"userId": user_id, "sessions.sessionId": chat_id},
+        {"sessions.$": 1},
+    )
+    if doc and doc.get("sessions"):
+        raw = doc["sessions"][0].get("filePaths", [])
+        # Only return paths that still exist on disk
+        return [p for p in raw if os.path.exists(p)]
+    return []
+
+
+async def _append_session_file_paths(user_id: ObjectId, chat_id: str, new_paths: List[str]):
+    """Append new file paths to the session record."""
+    if not new_paths:
+        return
+    await chats_collection.update_one(
+        {"userId": user_id, "sessions.sessionId": chat_id},
+        {"$push": {"sessions.$.filePaths": {"$each": new_paths}}},
+    )
+
+
 async def _save_message(user_id: ObjectId, chat_id: str, message: str, answer: str):
     await chats_collection.update_one(
         {"userId": user_id, "sessions.sessionId": chat_id},
@@ -257,7 +254,9 @@ async def _save_message(user_id: ObjectId, chat_id: str, message: str, answer: s
         },
     )
 
+
 def read_file_content(path: str) -> str:
+    """Read text content from a file; PDF paths are handled by the RAG tool."""
     try:
         with open(path, "r", encoding="utf-8", errors="ignore") as f:
             return f.read()
@@ -266,23 +265,41 @@ def read_file_content(path: str) -> str:
         return ""
 
 
-async def _process(
-    agent_type: str, username: str, adk_id: str, query: str, file_paths: List[str]
-) -> str:
+# FIX #3: Build agent-specific prompts that correctly embed absolute file paths
+# so every agent receives a path it can open. Previously the general branch
+# omitted the file-path block entirely, and other branches used an inconsistent
+# indented f-string that prepended whitespace to the path string.
+def _build_prompt(agent_type: str, query: str, file_paths: List[str]) -> str:
+    """Return the full prompt string for the given agent type."""
+    agent_type_lower = agent_type.lower()
 
-    runner = _get_runner(agent_type)
-
-    prompt = f"User Query: {query}"
+    if agent_type_lower == "general":
+        prompt = f"User Query: {query}"
+    else:
+        prompt = f'Please perform a full {agent_type_lower} analysis.\nUser Query: "{query}"'
 
     if file_paths:
         prompt += "\n\nDocuments:\n"
         for p in file_paths:
-            content = read_file_content(p)
-            prompt += f"""\nDocument ({p}):\n{content}\n"""
-    
+            # Use the absolute path directly; no extra whitespace/indentation.
+            prompt += f"\nFile path: {p}\n"
+            # For non-PDF text files, inline the content for agents that do
+            # not call the RAG tool themselves.
+            if not p.lower().endswith(".pdf"):
+                content = read_file_content(p)
+                if content:
+                    prompt += f"{content}\n"
+
+    return prompt
+
+
+async def _process(
+    agent_type: str, username: str, adk_id: str, query: str, file_paths: List[str]
+) -> str:
+    runner = _get_runner(agent_type)
+    prompt = _build_prompt(agent_type, query, file_paths)
     content = types.Content(role="user", parts=[types.Part(text=prompt)])
     result_text = ""
-
     async for chunk in runner.run_async(
         user_id=username,
         session_id=adk_id,
@@ -293,28 +310,15 @@ async def _process(
                 for part in chunk.content.parts:
                     if hasattr(part, "text") and part.text:
                         result_text += part.text
-
     return result_text
 
 
 async def _stream_process(
     agent_type: str, username: str, adk_id: str, query: str, file_paths: List[str]
 ) -> AsyncGenerator[str, None]:
-    """Yield SSE lines `data: <token>\n\n`. Falls back to one-shot if run_stream unavailable."""
+    """Yield SSE lines `data: <token>\n\n`."""
     runner = _get_runner(agent_type)
-
-    if agent_type.lower() == "general":
-        prompt = f"User Query: {query}"
-    else:
-        prompt = f'Please perform a full {agent_type} analysis.\nUser Query: "{query}"'
-
-    if file_paths:
-        prompt += "\n\nDocuments:\n"
-        for p in file_paths:
-            content = read_file_content(p)
-            prompt += f"""
-            \nFile path({p}):\n{content}\n"""
-
+    prompt = _build_prompt(agent_type, query, file_paths)
     content = types.Content(role="user", parts=[types.Part(text=prompt)])
     try:
         async for chunk in runner.run_async(
@@ -327,17 +331,16 @@ async def _stream_process(
             try:
                 if hasattr(chunk, "content") and chunk.content:
                     for part in getattr(chunk.content, "parts", []):
-
                         # tool result
                         if hasattr(part, "function_response") and part.function_response:
                             response = part.function_response.response
-                            if isinstance(response, dict):
+                            if isinstance(response, str):
+                                text = response
+                            elif isinstance(response, dict):
                                 text = response.get("result", "")
-
                         # normal model text
                         elif hasattr(part, "text") and part.text:
                             text = part.text
-
             except Exception as e:
                 log.error("Chunk parse error: %s", e)
 
@@ -368,8 +371,6 @@ async def chat(
     username:   str                         = Form(...),
     question:   str                         = Form(...),
     sessionId:  Optional[str]               = Form(None),
-    # NOTE: field is named 'stream' to match what the frontend sends.
-    # Python's built-in `stream` is not in this scope so no shadowing issue.
     stream:     Optional[str]               = Form(None),
     files:      Optional[List[UploadFile]]  = File(None),
 ):
@@ -377,8 +378,8 @@ async def chat(
     if agent.lower() not in valid:
         raise HTTPException(status_code=400, detail="Invalid agent type")
 
-    # Save uploads to disk (blocking I/O — acceptable for ≤10 MB files)
-    file_paths: List[str] = []
+    # Save newly uploaded files to UPLOAD_DIR
+    new_file_paths: List[str] = []
     if files:
         for f in files:
             if f and f.filename:
@@ -386,7 +387,7 @@ async def chat(
                 dest = os.path.join(UPLOAD_DIR, safe)
                 with open(dest, "wb") as buf:
                     shutil.copyfileobj(f.file, buf)
-                file_paths.append(dest)
+                new_file_paths.append(dest)
                 log.info("Saved upload: %s", dest)
 
     user_id = await _get_user_id(username)
@@ -404,7 +405,18 @@ async def chat(
         adk_id = await _create_adk_session(username)
         await _add_session_to_mongo(user_id, active_chat_id, adk_id, agent)
 
-    log.info("Chat | user=%s session=%s agent=%s stream=%s", username, active_chat_id, agent, stream)
+    # FIX #2: Merge previously stored paths for this session with any new ones.
+    # This means the user only has to upload a PDF once per chat session —
+    # subsequent messages automatically include the same files.
+    stored_paths = await _get_session_file_paths(user_id, active_chat_id)
+    if new_file_paths:
+        await _append_session_file_paths(user_id, active_chat_id, new_file_paths)
+    file_paths = stored_paths + new_file_paths
+
+    log.info(
+        "Chat | user=%s session=%s agent=%s stream=%s files=%d",
+        username, active_chat_id, agent, stream, len(file_paths)
+    )
 
     # ── Streaming SSE response ─────────────────────────────────────────────────
     if stream and stream.lower() == "true":
@@ -413,9 +425,7 @@ async def chat(
         async def sse_with_save():
             async for chunk in _stream_process(agent, username, adk_id, question, file_paths):
                 if chunk != "data: [DONE]\n\n":
-                    # Strip the `data: ` prefix (6 chars) and trailing newlines
-                    #collected.append(chunk[6:].rstrip("\n"))
-                    payload = chunk.replace("data: ","").strip()
+                    payload = chunk.replace("data: ", "").strip()
                     collected.append(payload)
                 yield chunk
             await _save_message(user_id, active_chat_id, question, "".join(collected))
@@ -434,8 +444,6 @@ async def chat(
     answer = await _process(agent, username, adk_id, question, file_paths)
     await _save_message(user_id, active_chat_id, question, answer)
     log.info("Returning response: %s", answer[:200])
-
-    from fastapi.responses import JSONResponse
 
     return JSONResponse(
         content={
@@ -466,8 +474,8 @@ async def rename_session(username: str, session_id: str, title: str = Form(...))
 
 @app.patch("/chat/{username}/{session_id}/metadata")
 async def update_session_metadata(
-    username: str, 
-    session_id: str, 
+    username: str,
+    session_id: str,
     agent: Optional[str] = Form(None),
     documents: Optional[List[str]] = Form(None)
 ):
@@ -477,10 +485,8 @@ async def update_session_metadata(
         update_fields["sessions.$.agent"] = agent
     if documents is not None:
         update_fields["sessions.$.documents"] = documents
-    
     if not update_fields:
         raise HTTPException(status_code=400, detail="No fields to update")
-    
     result = await chats_collection.update_one(
         {"userId": user_id, "sessions.sessionId": session_id},
         {"$set": update_fields},
@@ -510,7 +516,6 @@ async def get_sessions(username: str):
     doc = await chats_collection.find_one({"userId": user_id})
     if not doc:
         return {"sessions": []}
-
     sessions = [
         {
             "sessionId":    s["sessionId"],

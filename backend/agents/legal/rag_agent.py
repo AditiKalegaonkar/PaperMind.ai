@@ -2,6 +2,7 @@ from google.adk.agents import Agent
 from google.adk.tools import FunctionTool, ToolContext
 from google.adk.tools.agent_tool import AgentTool
 from tools.QdrantRAG import run_qdrant_rag
+from tools.RAG import run_rag_pipeline
 from tools.prompts import LEGAL_RAG
 from tools.tool import get_article_information, get_legal_definition
 import io
