@@ -566,7 +566,6 @@ The global AI document processing market is experiencing explosive growth:
 | **User Authentication** | ✓ OAuth+Email | ✗ | Enterprise | Enterprise | ✗ |
 | **Session Memory** | ✓ Full history | ✗ | ✓ | ✗ | ✗ |
 | **Open Source** | ✓ | ✗ | ✗ | ✗ | ✗ |
-| **Self-Hosted** | ✓ Docker | ✗ | ✗ | ✗ | ✗ |
 | **Flashcard Generation** | ✓ Education | ✗ | ✗ | ✗ | ✗ |
 | **Risk Analysis** | ✓ Legal | ✗ | ✓ | ✓ | ✗ |
 

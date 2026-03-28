@@ -195,7 +195,6 @@ def run_rag_pipeline(user_path: str, question: str) -> str:
     embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
     db = _get_or_build_index(user_path, embeddings)
 
-    # FIX: MMR retrieval reduces redundant chunks; fetch_k=20 gives a wide
     # candidate pool while k=6 keeps the context window lean.
     retriever = db.as_retriever(
         search_type="mmr",
@@ -204,7 +203,6 @@ def run_rag_pipeline(user_path: str, question: str) -> str:
 
     llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.3)
 
-    # FIX: system instructions and question are now separate template
     # variables — no more double-injection of the question string.
     prompt = PromptTemplate(
         template=(
