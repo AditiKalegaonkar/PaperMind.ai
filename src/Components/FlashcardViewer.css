@@ -1,0 +1,264 @@
+/* -------------------------------------------------------
+   Flashcard Viewer – Theme-Aware Using Your :root Colors
+--------------------------------------------------------*/
+
+/* Main container */
+.pm-flashcard-viewer {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+/* Header */
+.pm-flashcard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.pm-flashcard-header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--primary-dark);
+}
+
+/* -------------------------------------------------------
+   TABS
+--------------------------------------------------------*/
+
+.pm-flashcard-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.pm-flashcard-tab {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--primary);
+  background: var(--surface);
+  color: var(--primary);
+  cursor: pointer;
+  transition: 0.2s background;
+  font-size: 14px;
+}
+
+.pm-flashcard-tab:hover {
+  background: var(--surface2);
+}
+
+.pm-flashcard-tab.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+/* -------------------------------------------------------
+   EMPTY STATE
+--------------------------------------------------------*/
+
+.pm-flashcard-empty {
+  text-align: center;
+  padding: 40px;
+  color: var(--muted);
+  font-size: 16px;
+}
+
+/* -------------------------------------------------------
+   GRID VIEW
+--------------------------------------------------------*/
+
+.pm-flashcard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 16px;
+}
+
+.pm-flashcard-grid-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  cursor: pointer;
+  min-height: 170px;
+  transition: 0.25s transform;
+}
+
+.pm-flashcard-grid-item:hover {
+  transform: scale(1.03);
+}
+
+.pm-flashcard-grid-item.flipped {
+  background: var(--surface2);
+}
+
+.pm-flashcard-label {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.pm-flashcard-question {
+  margin-top: 8px;
+  color: var(--primary-dark);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.pm-flashcard-answer {
+  color: var(--text);
+  font-size: 15px;
+}
+
+.pm-flashcard-hint {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* -------------------------------------------------------
+   LIST VIEW
+--------------------------------------------------------*/
+
+.pm-flashcard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pm-flashcard-list-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+
+.pm-flashcard-list-question {
+  display: flex;
+  justify-content: space-between;
+  font-size: 15px;
+  color: var(--primary-dark);
+  cursor: pointer;
+}
+
+.pm-flashcard-list-answer {
+  margin-top: 10px;
+  padding: 12px;
+  background: var(--surface2);
+  border-radius: 8px;
+  color: var(--text-light);
+  font-size: 14px;
+}
+
+/* -------------------------------------------------------
+   QUIZ VIEW
+--------------------------------------------------------*/
+
+.pm-flashcard-quiz {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.pm-flashcard-quiz-card {
+  width: 100%;
+  max-width: 500px;
+  min-height: 180px;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  transition: 0.25s background;
+}
+
+.pm-flashcard-quiz-card.flipped {
+  background: var(--surface2);
+}
+
+.pm-flashcard-quiz-front,
+.pm-flashcard-quiz-back {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pm-flashcard-quiz-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.pm-flashcard-quiz-content {
+  font-size: 17px;
+  color: var(--primary-dark);
+  font-weight: 500;
+}
+
+.pm-flashcard-quiz-hint {
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* Navigation buttons */
+.pm-flashcard-quiz-nav {
+  display: flex;
+  gap: 12px;
+}
+
+.pm-flashcard-quiz-btn {
+  padding: 8px 18px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--primary);
+  color: var(--primary);
+  cursor: pointer;
+  transition: 0.2s;
+  font-size: 15px;
+}
+
+.pm-flashcard-quiz-btn:hover {
+  background: var(--surface2);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* -------------------------------------------------------
+   FLASHCARD LINK BOX (Generate Flashcards Section)
+--------------------------------------------------------*/
+
+.pm-flashcard-link-box {
+  margin-top: 20px;
+  padding: 14px 18px;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pm-flashcard-link-label {
+  font-size: 14px;
+  color: var(--primary-dark);
+}
+
+.pm-flashcard-link-btn {
+  padding: 8px 16px;
+  background: var(--primary);
+  border-radius: 8px;
+  border: none;
+  color: white;
+  cursor: pointer;
+  transition: 0.2s;
+  font-size: 14px;
+}
+
+.pm-flashcard-link-btn:hover {
+  background: var(--accent);
+}

@@ -53,8 +53,6 @@ app.use(
   cors({
     origin: [FRONTEND_URL],
     credentials: true,
-    // FIX: explicitly expose the session-id headers so the browser's
-    // fetch/XHR can read them from response.headers.get(...)
     exposedHeaders: ["X-Session-Id", "X-Adk-Session-Id"],
   })
 );
@@ -175,9 +173,6 @@ app.get("/auth/logout", (req, res) => {
 });
 
 // ───────────────── File cleanup helper ─────────────────
-// FIX: Only clean files AFTER the proxy response has fully ended.
-// Previously cleanFiles was called inside the proxyRes callback (before
-// the stream finished), which could cause read errors on some OS configs.
 const cleanFiles = (files) => {
   if (!files) return;
   files.forEach((f) => {
@@ -206,9 +201,6 @@ app.post(
     form.append("agent", agent);
     form.append("username", req.currentUser.email);
     form.append("question", question);
-
-    // FIX: Always forward sessionId when present so FastAPI reuses the
-    // existing session instead of creating a new one on every message.
     if (typeof sessionId === "string" && sessionId.trim().length > 0) {
       form.append("sessionId", sessionId.trim());
     }
@@ -242,19 +234,14 @@ app.post(
         }
       }
 
-      // FIX: Also forward the custom session-id headers that FastAPI sets,
-      // so the browser can read them even when streaming.
       const sessionIdHeader = proxyRes.headers["x-session-id"];
       const adkHeader = proxyRes.headers["x-adk-session-id"];
       if (sessionIdHeader) res.setHeader("X-Session-Id", sessionIdHeader);
       if (adkHeader) res.setHeader("X-Adk-Session-Id", adkHeader);
 
-      // FIX: statusCode MUST be set before flushHeaders — once headers are
-      // flushed the status line is already on the wire and cannot be changed.
       res.statusCode = proxyRes.statusCode;
       res.flushHeaders();
 
-      // Clean temp files only after the response stream has fully ended
       proxyRes.on("end", () => cleanFiles(req.files));
 
       proxyRes.pipe(res);
