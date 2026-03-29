@@ -25,6 +25,7 @@ const FlashcardViewer = ({ flashcards }) => {
         }
       } catch (_) {}
       const m = flashcards.match(/\[[\s\S]*\]/);
+      console.log("MATCHED:", m?.[0]);
       if (m) {
         try {
           setParsedCards(JSON.parse(m[0]));
@@ -112,6 +113,7 @@ const FlashcardViewer = ({ flashcards }) => {
     return (
       <div className="pm-flashcard-viewer">
         <div className="pm-flashcard-header">
+          console.log(parseCards.length);
           <h3>Flashcards ({parsedCards.length})</h3>
           <Tabs />
         </div>

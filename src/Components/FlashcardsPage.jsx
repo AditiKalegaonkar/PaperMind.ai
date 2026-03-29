@@ -47,12 +47,12 @@ export default function FlashcardsPage() {
         <h1 className="pm-flashcards-page-title">Flashcards</h1>
       </div>
 
-      {summary && (
+      {/*{summary && (
         <div className="pm-flashcards-summary">
           <h2>Summary</h2>
           <p>{summary}</p>
         </div>
-      )}
+      )}*/}
 
       {cards ? (
         <FlashcardViewer flashcards={cards} />
