@@ -207,6 +207,36 @@ const extractFlashcardData = (text) => {
   return { cards, summary };
 };
 
+const extractChartData = (text) => {
+  if (!text) return null;
+  try {
+    // strip markdown fences if present
+    const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+    const working = fenceMatch ? fenceMatch[1].trim() : text.trim();
+
+    // find first { (object not array)
+    const start = working.indexOf('{');
+    if (start === -1) return null;
+
+    // find matching closing }
+    let depth = 0, end = -1;
+    for (let i = start; i < working.length; i++) {
+      if (working[i] === '{') depth++;
+      else if (working[i] === '}') { depth--; if (depth === 0) { end = i; break; } }
+    }
+    if (end === -1) return null;
+
+    const parsed = JSON.parse(working.slice(start, end + 1));
+
+    // validate it has the expected keys
+    if (!parsed.severity || !parsed.categories || !parsed.top_risks) return null;
+
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
 // ── FlashcardLink inline component ───────────────────────────────────────────
 const FlashcardLink = ({ cards, summary, navigate }) => (
   <div className="pm-flashcard-link-box">
@@ -223,6 +253,63 @@ const FlashcardLink = ({ cards, summary, navigate }) => (
   </div>
 );
 
+const LegalChartView = ({ data }) => {
+  const maxSev = Math.max(...data.severity.map(s => s.count), 1);
+  const maxCat = Math.max(...data.categories.map(c => c.count), 1);
+  const sevColors = { High: '#e74c3c', Medium: '#f39c12', Low: '#27ae60' };
+
+  return (
+    <div className="pm-chart-box">
+      <h4 className="pm-chart-title">⚖️ Legal Risk Analysis</h4>
+
+      {/* Severity bars */}
+      <p className="pm-chart-section-label">Risk by Severity</p>
+      {data.severity.map(s => (
+        <div key={s.label} className="pm-chart-row">
+          <span className="pm-chart-label">{s.label}</span>
+          <div className="pm-chart-bar-bg">
+            <div className="pm-chart-bar" style={{
+              width: `${(s.count / maxSev) * 100}%`,
+              background: sevColors[s.label] || '#888'
+            }}/>
+          </div>
+          <span className="pm-chart-count">{s.count}</span>
+        </div>
+      ))}
+
+      {/* Category bars */}
+      <p className="pm-chart-section-label" style={{ marginTop: 12 }}>Risk by Category</p>
+      {data.categories.map(c => (
+        <div key={c.label} className="pm-chart-row">
+          <span className="pm-chart-label">{c.label}</span>
+          <div className="pm-chart-bar-bg">
+            <div className="pm-chart-bar" style={{
+              width: `${(c.count / maxCat) * 100}%`,
+              background: '#3498db'
+            }}/>
+          </div>
+          <span className="pm-chart-count">{c.count}</span>
+        </div>
+      ))}
+
+      {/* Top risks table */}
+      {data.top_risks?.length > 0 && (
+        <>
+          <p className="pm-chart-section-label" style={{ marginTop: 12 }}>Top Risks</p>
+          {data.top_risks.map((r, i) => (
+            <div key={i} className="pm-risk-row">
+              <span className="pm-risk-badge" style={{ background: sevColors[r.severity] || '#888' }}>
+                {r.severity}
+              </span>
+              <span className="pm-risk-title">{r.title}</span>
+              <span className="pm-risk-clause">{r.clause}</span>
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  );
+};
 // ── Main component ────────────────────────────────────────────────────────────
 export default function UserDashboard() {
   const navigate   = useNavigate();
@@ -758,6 +845,9 @@ export default function UserDashboard() {
                             />
                           </>
                         );
+                      }const chart = extractChartData(m.content);
+                      if (chart) {
+                        return <LegalChartView data={chart}/>;
                       }
                     }
                     return <BotMsg text={m.content}/>;
