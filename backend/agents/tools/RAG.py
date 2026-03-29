@@ -167,7 +167,7 @@ def _get_or_build_index(path: str, embeddings):
 
     # FIX: use full hash to prevent prefix collisions
     index_path = os.path.join(FAISS_CACHE_DIR, _doc_hash(path))
-    if os.path.isdir(index_path):
+    if os.path.isdir(index_path) and os.path.exists(os.path.join(index_path, "index.faiss")):
         return FAISS.load_local(
             index_path, embeddings, allow_dangerous_deserialization=True
         )
