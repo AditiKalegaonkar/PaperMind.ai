@@ -31,6 +31,7 @@ flashcard_agent = Agent(
         - Cover different important concepts from the summary.
         - Questions must be clear, specific, and suitable for student revision.
         - Answers must be short, precise, and factually grounded in the summary.
+        - Create as many flashcards as you can based on the document always give more than 5 atleast.
 
         STRICT OUTPUT RULES
         - Output ONLY the JSON array.

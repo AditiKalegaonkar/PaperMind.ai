@@ -4,7 +4,7 @@ from google.adk.tools.agent_tool import AgentTool
 
 search_the_web = Agent(
     name="search_the_web",
-    model="gemini-2.5-pro",
+    model="gemini-2.5-flash",
     description="Agent that performs Google searches and gives proper structured output.",
     tools=[google_search],
     instruction="""

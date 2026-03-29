@@ -53,10 +53,6 @@ session_service: Optional[DatabaseSessionService] = None
 SESSION_DB_URL = "sqlite+aiosqlite:///chat2.db"
 APP_NAME = "PaperMind"
 
-# FIX #1: Single canonical upload directory resolved to absolute path.
-# Previously UPLOAD_DIR was a relative "uploaded_files" which resolved
-# differently depending on the CWD at startup, causing files to be saved
-# in one place but looked up from another (the two-directory bug).
 UPLOAD_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "uploaded_files"))
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
