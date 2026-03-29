@@ -113,7 +113,6 @@ const FlashcardViewer = ({ flashcards }) => {
     return (
       <div className="pm-flashcard-viewer">
         <div className="pm-flashcard-header">
-          console.log(parseCards.length);
           <h3>Flashcards ({parsedCards.length})</h3>
           <Tabs />
         </div>
