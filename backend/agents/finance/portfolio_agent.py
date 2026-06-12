@@ -60,7 +60,11 @@ def get_portfolio_holdings(holdings_text: str) -> dict:
         
         stock_info = get_stock_info(symbol)
         if "error" not in stock_info:
-            current_price = stock_info.get("current_price", 0)
+            raw = stock_info.get("current_price", 0)
+            try:
+                current_price = float(raw) if raw not in (None, "N/A", "") else 0
+            except (TypeError, ValueError):
+                current_price = 0
             current_value = current_price * quantity
             holdings[symbol] = {
                 "quantity": quantity,

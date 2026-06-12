@@ -3,7 +3,7 @@ from .recommendation_agent import recommendation_agent_tool
 from .market_agent import market_analyst_tool
 from .rag_agent import finance_rag_agent_tool
 from google.adk.agents import Agent
-from google.adk.tools import ToolContext
+from google.adk.tools import FunctionTool, ToolContext
 from dotenv import load_dotenv
 from google.adk.tools.agent_tool import AgentTool
 
@@ -20,8 +20,8 @@ def store_risk_tolerance(risk: str, tool_context: ToolContext):
     tool_context.state['risk_tolerance'] = risk
 
 
-store_portfolio_tool = store_portfolio_data
-store_risk_tool = store_risk_tolerance
+store_portfolio_tool = FunctionTool(func=store_portfolio_data)
+store_risk_tool = FunctionTool(func=store_risk_tolerance)
 
 
 # Root Finance Agent
@@ -72,6 +72,8 @@ finance_agent = Agent(
         portfolio_analyzer_tool,
         recommendation_agent_tool,
         market_analyst_tool,
+        store_portfolio_tool,
+        store_risk_tool,
     ],
 )
 

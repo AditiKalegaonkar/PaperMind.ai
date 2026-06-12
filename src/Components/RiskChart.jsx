@@ -43,9 +43,10 @@ const RiskChart = ({ chartCode }) => {
     try {
       // Extract JavaScript code from the response
       const codeMatch = chartCode.match(/<div class='plot'>([\s\S]*?)<\/div>/);
+      let altMatch = null;
       if (!codeMatch) {
         // Try alternative pattern
-        const altMatch = chartCode.match(/<div class="plot">([\s\S]*?)<\/div>/);
+        altMatch = chartCode.match(/<div class="plot">([\s\S]*?)<\/div>/);
         if (!altMatch) {
           // Try to find any script content
           setError('No chart code found');

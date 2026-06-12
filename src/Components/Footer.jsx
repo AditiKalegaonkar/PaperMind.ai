@@ -3,7 +3,7 @@ import './Footer.css'
 function Footer() {
     return(
         <section className="end quicksand">
-            <p>© All Rights Reserved By PaperMind.ai 2025</p>
+            <p>© All Rights Reserved By PaperMind.ai {new Date().getFullYear()}</p>
         </section>
     );
 }

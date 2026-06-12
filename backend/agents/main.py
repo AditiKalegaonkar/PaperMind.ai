@@ -327,15 +327,11 @@ async def _stream_process(
             try:
                 if hasattr(chunk, "content") and chunk.content:
                     for part in getattr(chunk.content, "parts", []):
-                        # tool result
+                        # skip tool results — internal to the agent
                         if hasattr(part, "function_response") and part.function_response:
-                            response = part.function_response.response
-                            if isinstance(response, str):
-                                text = response
-                            elif isinstance(response, dict):
-                                text = response.get("result", "")
+                            continue
                         # normal model text
-                        elif hasattr(part, "text") and part.text:
+                        if hasattr(part, "text") and part.text:
                             text = part.text
             except Exception as e:
                 log.error("Chunk parse error: %s", e)

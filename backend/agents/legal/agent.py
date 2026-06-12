@@ -12,6 +12,7 @@ load_dotenv()
 
 
 def append_response(response: str, tool_context: ToolContext):
+    tool_context.state.setdefault('response', '')
     tool_context.state['response'] += response
 
 
