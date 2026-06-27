@@ -18,7 +18,7 @@ const EyeIcon = ({ visible }) =>
     </svg>
   );
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const API_URL = import.meta.env.VITE_API_URL || "https://papermindai-production-72e1.up.railway.app/";
 
 const SignUp = () => {
   const navigate = useNavigate();

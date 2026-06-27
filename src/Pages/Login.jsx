@@ -5,7 +5,7 @@ import "./Login.css";
 import Googlelogo from "../assets/google-logo.png";
 import { Link, useNavigate } from "react-router-dom";
 
-const API_URL = "http://localhost:5000";
+const API_URL = "https://papermindai-production-72e1.up.railway.app/";
 
 const Login = () => {
   const navigate = useNavigate();
