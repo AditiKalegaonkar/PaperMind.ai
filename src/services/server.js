@@ -12,6 +12,7 @@ import express from "express";
 import mongoose from "mongoose";
 import passport from "./passport.js";
 import session from "express-session";
+import MongoStore from "connect-mongo";
 import cors from "cors";
 import bcrypt from "bcryptjs";
 import axios from "axios";
@@ -61,6 +62,10 @@ app.use(
 app.use(
   session({
     secret: process.env.SESSION_SECRET,
+    store: MongoStore.create({
+      mongoUrl: process.env.MONGO_URI,
+      collectionName: "sessions",
+    }),
     resave: false,
     saveUninitialized: false,
     cookie: {
