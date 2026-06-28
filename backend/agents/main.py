@@ -254,7 +254,6 @@ async def _get_session_file_paths(user_id: ObjectId, chat_id: str) -> List[str]:
     )
     if doc and doc.get("sessions"):
         raw = doc["sessions"][0].get("filePaths", [])
-        # Only return paths that still exist on disk
         return [p for p in raw if os.path.exists(p)]
     return []
 
@@ -443,23 +442,32 @@ async def chat(
                 new_file_paths.append(dest)
                 log.info("Saved upload: %s", dest)
 
+    log.info("Step: 1")
     user_id = await _get_user_id(username)
+    log.info("Step: 2")
     await _ensure_chat_doc(user_id)
 
     # ── Session resolution ─────────────────────────────────────────────────────
     if sessionId is not None and sessionId != "":
         active_chat_id = sessionId
+        log.info("Step 3")
         adk_id = await _get_adk_id(user_id, active_chat_id)
         if not adk_id:
+            log.info("Step 4")
             adk_id = await _create_adk_session(username)
             await _update_adk_id(user_id, active_chat_id, adk_id)
     else:
+        log.info("Step 5")
         active_chat_id = str(uuid.uuid4())
+        log.info("Step 6")
         adk_id = await _create_adk_session(username)
+        log.info("Step 7")
         await _add_session_to_mongo(user_id, active_chat_id, adk_id, agent)
 
+    log.info("Step 8")
     stored_paths = await _get_session_file_paths(user_id, active_chat_id)
     if new_file_paths:
+        log.info("Step 9")
         await _append_session_file_paths(user_id, active_chat_id, new_file_paths)
     file_paths = stored_paths + new_file_paths
 
