@@ -59,13 +59,27 @@ app.use(
   })
 );
 
+const sessionStore = MongoStore.create({
+  mongoUrl: process.env.MONGO_URI,
+  collectionName: "sessions",
+  // touchAfter: only re-save the session if it hasn't been written in this
+  // many seconds, since per-request writes are unnecessary overhead. Default
+  // omitted on purpose for now while debugging — add back to 24*3600 once
+  // confirmed working, to reduce write load.
+});
+
+sessionStore.on("error", (err) => {
+  console.error("Session store error:", err);
+});
+
+sessionStore.on("create", (sessionId) => {
+  console.log("Session created in store:", sessionId);
+});
+
 app.use(
   session({
     secret: process.env.SESSION_SECRET,
-    store: MongoStore.create({
-      mongoUrl: process.env.MONGO_URI,
-      collectionName: "sessions",
-    }),
+    store: sessionStore,
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -79,6 +93,24 @@ app.use(
 
 app.use(passport.initialize());
 app.use(passport.session());
+
+// ── TEMPORARY DEBUG MIDDLEWARE ──────────────────────────────────────────────
+// Logs, for every request: the raw cookie header, the session ID Express
+// resolved it to, and whether req.session.user exists at that point. This
+// runs AFTER the session middleware has had a chance to load the session
+// from the store, so it tells us definitively whether the deserialized
+// session actually contains user data on this specific request.
+// Remove this block once the auth issue is confirmed fixed.
+app.use((req, res, next) => {
+  console.log(
+    "[DEBUG]", req.method, req.path,
+    "| cookie header present:", !!req.headers.cookie,
+    "| session.id:", req.sessionID,
+    "| session.user:", req.session ? JSON.stringify(req.session.user) : "(no req.session)",
+    "| req.user (passport):", JSON.stringify(req.user),
+  );
+  next();
+});
 
 // Google OAuth
 app.get(
@@ -164,13 +196,32 @@ app.post("/auth/login", authLimiter, async (req, res) => {
       firstName: user.firstName,
     };
 
-    res.json({ message: "Logged in", user: req.session.user });
+    // TEMPORARY DEBUG: explicitly save and log before responding, instead of
+    // relying on express-session's automatic save-on-response-end. This
+    // tells us whether the save actually completes (and with what session
+    // ID) before the client ever sees the Set-Cookie header.
+    req.session.save((err) => {
+      if (err) {
+        console.error("[DEBUG] session.save error on login:", err);
+        return res.status(500).json({ error: "Login failed (session save error)" });
+      }
+      console.log(
+        "[DEBUG] /auth/login saved session.id:", req.sessionID,
+        "| user:", JSON.stringify(req.session.user),
+      );
+      res.json({ message: "Logged in", user: req.session.user });
+    });
   } catch {
     res.status(500).json({ error: "Login failed" });
   }
 });
 
 app.get("/auth/user", (req, res) => {
+  console.log(
+    "[DEBUG] /auth/user | session.id:", req.sessionID,
+    "| req.session.user:", JSON.stringify(req.session.user),
+    "| req.user:", JSON.stringify(req.user),
+  );
   res.json({ user: req.user || req.session.user || null });
 });
 
