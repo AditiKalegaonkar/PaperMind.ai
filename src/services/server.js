@@ -24,7 +24,7 @@ import rateLimit from "express-rate-limit";
 import User from "./Database/User.js";
 
 const app = express();
-app.set('trust proxy', true);
+app.set('trust proxy', 1);
 
 const FASTAPI_URL = process.env.FASTAPI_URL;
 
@@ -88,7 +88,7 @@ app.use(
       path: "/",
       httpOnly: true,
       secure: true,
-      sameSite: "lax",
+      sameSite: "none",
       maxAge: 24 * 60 * 60 * 1000,
     },
   })
