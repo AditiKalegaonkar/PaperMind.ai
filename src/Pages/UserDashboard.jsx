@@ -6,9 +6,9 @@ import DocumentViewer from '../Components/DocumentViewer';
 
 const API_URL = import.meta.env.VITE_API_URL;
 if (!API_URL) {
-    console.error("VITE_API_URL is not set — check your .env file.");
-  }
-  
+  console.error("VITE_API_URL is not set — check your .env file.");
+}
+
 const AGENTS = [
   { id: 'general',   name: 'General',   desc: 'General assistant' },
   { id: 'legal',     name: 'Legal',     desc: 'Legal document analysis' },
@@ -16,6 +16,20 @@ const AGENTS = [
   { id: 'finance',   name: 'Finance',   desc: 'Portfolio & investments' },
 ];
 const DEMO_MODE = import.meta?.env?.VITE_DEMO_MODE === 'true';
+
+// ── JWT helper ────────────────────────────────────────────────────────────────
+const getToken = () => localStorage.getItem('token');
+
+const authFetch = (url, options = {}) => {
+  const token = getToken();
+  return fetch(url, {
+    ...options,
+    headers: {
+      Authorization: token ? `Bearer ${token}` : '',
+      ...options.headers,
+    },
+  });
+};
 
 // ── Icon helpers ──────────────────────────────────────────────────────────────
 const Svg = ({ children, size = 18, className, ...rest }) => (
@@ -40,7 +54,6 @@ const CheckIcon  = () => <Svg size={13}><polyline points="20 6 9 17 4 12"/></Svg
 const ChevronLeftIcon = () => <Svg><polyline points="15 18 9 12 15 6"/></Svg>;
 const FileTextIcon    = () => <Svg><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><path d="M10 9 9 9 8 9"/></Svg>;
 const SearchIcon      = () => <Svg size={14}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></Svg>;
-// New: flashcard icon for the link button
 const FlashcardIcon   = () => <Svg size={15}><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="2" y1="12" x2="22" y2="12"/></Svg>;
 
 const fmtBytes = (b) => !b ? '' : b < 1024 ? `${b}B` : b < 1048576 ? `${(b/1024).toFixed(1)}KB` : `${(b/1048576).toFixed(1)}MB`;
@@ -88,14 +101,10 @@ const BotMsg = ({ text }) => {
 };
 
 // ── Flashcard extraction ──────────────────────────────────────────────────────
-
 const sanitiseJsonString = (str) => {
-  // Replace curly/smart quotes with straight quotes
   str = str.replace(/[\u201c\u201d\u2018\u2019]/g, (c) =>
     (c === '\u201c' || c === '\u201d') ? '"' : "'"
   );
-  // Walk char-by-char: escape any " that appears inside a string value
-  // (i.e. not the structural open/close quote)
   let out = '', inString = false, escaped = false;
   for (let i = 0; i < str.length; i++) {
     const c = str[i];
@@ -105,10 +114,9 @@ const sanitiseJsonString = (str) => {
       if (!inString) {
         inString = true; out += c;
       } else {
-        // A structural closing quote is followed (ignoring whitespace) by : , } ]
         const rest = str.slice(i + 1).trimStart();
         if (/^[:\,\}\]]/.test(rest)) { inString = false; out += c; }
-        else { out += '\\"'; } // internal quote — escape it
+        else { out += '\\"'; }
       }
       continue;
     }
@@ -119,85 +127,45 @@ const sanitiseJsonString = (str) => {
 
 const extractFlashcardData = (text) => {
   if (!text) return null;
-  if (text.includes('[REDACTED]')) {
-    console.warn('[Flashcard] JSON corrupted by redaction');
-  }
+  if (text.includes('[REDACTED]')) console.warn('[Flashcard] JSON corrupted by redaction');
 
-  // Strip markdown ```json ... ``` fence if present
   let working = text;
   const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (fenceMatch) {
-    working = fenceMatch[1].trim();
-    console.log('[Flashcard] stripped fence, working:', working.slice(0, 200));
-  }
+  if (fenceMatch) working = fenceMatch[1].trim();
 
-  // Find the first '[' that is NOT the start of '[REDACTED]'
   let start = -1;
   for (let i = working.indexOf('['); i !== -1; i = working.indexOf('[', i + 1)) {
     if (working.slice(i, i + 11) === '[REDACTED]') continue;
-    start = i;
-    break;
+    start = i; break;
   }
-  if (start === -1) {
-    console.log('[Flashcard] no [ found — not a flashcard response');
-    return null;
-  }
+  if (start === -1 || text.trim() === '[REDACTED]') return null;
 
-  if (text.trim() === '[REDACTED]') {
-    return null;
-  }
-  // Find matching closing ] with bracket counter
   let depth = 0, end = -1;
   for (let i = start; i < working.length; i++) {
     if (working[i] === '[') depth++;
     else if (working[i] === ']') { depth--; if (depth === 0) { end = i; break; } }
   }
-  if (end === -1) {
-    console.log('[Flashcard] [ found but no matching ] — still streaming');
-    return null;
-  }
+  if (end === -1) return null;
 
-  // Try parsing raw, then sanitised
   const raw = working.slice(start, end + 1);
-  console.log('[Flashcard] JSON slice (first 200):', raw.slice(0, 200));
-
   let parsed;
-  try {
-    parsed = JSON.parse(raw);
-    console.log('[Flashcard] raw parse OK');
-  } catch (e1) {
-    console.log('[Flashcard] raw parse failed:', e1.message, '— trying sanitise');
-    try {
-      parsed = JSON.parse(sanitiseJsonString(raw));
-      console.log('[Flashcard] sanitised parse OK');
-    } catch (e2) {
-      console.warn('[Flashcard] both parses failed:', e2.message);
-      return null;
-    }
+  try { parsed = JSON.parse(raw); }
+  catch (e1) {
+    try { parsed = JSON.parse(sanitiseJsonString(raw)); }
+    catch { return null; }
   }
 
-  if (!Array.isArray(parsed) || parsed.length === 0) {
-    console.log('[Flashcard] parsed but not a non-empty array:', parsed);
-    return null;
-  }
+  if (!Array.isArray(parsed) || parsed.length === 0) return null;
 
-  // Normalise key names: question/answer, front/back, term/definition, q/a
   const cards = parsed.map(card => {
     const q = card.question ?? card.front ?? card.term  ?? card.q ?? null;
     const a = card.answer   ?? card.back  ?? card.definition ?? card.a ?? null;
-    if (!q || !a) {
-      console.log('[Flashcard] card missing keys:', Object.keys(card));
-      return null;
-    }
+    if (!q || !a) return null;
     return { question: String(q), answer: String(a) };
   }).filter(Boolean);
 
-  if (cards.length === 0) {
-    console.warn('[Flashcard] zero valid cards after normalisation');
-    return null;
-  }
+  if (cards.length === 0) return null;
 
-  // Summary = prose before the JSON array (or before the fence)
   const markerInOriginal = fenceMatch
     ? text.indexOf('```')
     : (() => {
@@ -207,41 +175,29 @@ const extractFlashcardData = (text) => {
       })();
   const summary = text.slice(0, markerInOriginal).trim();
 
-  console.log(`[Flashcard] SUCCESS — ${cards.length} cards, summary length ${summary.length}`);
   return { cards, summary };
 };
 
 const extractChartData = (text) => {
   if (!text) return null;
   try {
-    // strip markdown fences if present
     const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
     const working = fenceMatch ? fenceMatch[1].trim() : text.trim();
-
-    // find first { (object not array)
     const start = working.indexOf('{');
     if (start === -1) return null;
-
-    // find matching closing }
     let depth = 0, end = -1;
     for (let i = start; i < working.length; i++) {
       if (working[i] === '{') depth++;
       else if (working[i] === '}') { depth--; if (depth === 0) { end = i; break; } }
     }
     if (end === -1) return null;
-
     const parsed = JSON.parse(working.slice(start, end + 1));
-
-    // validate it has the expected keys
     if (!parsed.severity || !parsed.categories || !parsed.top_risks) return null;
-
     return parsed;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 };
 
-// ── FlashcardLink inline component ───────────────────────────────────────────
+// ── FlashcardLink ─────────────────────────────────────────────────────────────
 const FlashcardLink = ({ cards, summary, navigate }) => (
   <div className="pm-flashcard-link-box">
     <FlashcardIcon/>
@@ -261,50 +217,35 @@ const LegalChartView = ({ data }) => {
   const maxSev = Math.max(...data.severity.map(s => s.count), 1);
   const maxCat = Math.max(...data.categories.map(c => c.count), 1);
   const sevColors = { High: '#e74c3c', Medium: '#f39c12', Low: '#27ae60' };
-
   return (
     <div className="pm-chart-box">
       <h4 className="pm-chart-title">⚖️ Legal Risk Analysis</h4>
-
-      {/* Severity bars */}
       <p className="pm-chart-section-label">Risk by Severity</p>
       {data.severity.map(s => (
         <div key={s.label} className="pm-chart-row">
           <span className="pm-chart-label">{s.label}</span>
           <div className="pm-chart-bar-bg">
-            <div className="pm-chart-bar" style={{
-              width: `${(s.count / maxSev) * 100}%`,
-              background: sevColors[s.label] || '#888'
-            }}/>
+            <div className="pm-chart-bar" style={{ width: `${(s.count / maxSev) * 100}%`, background: sevColors[s.label] || '#888' }}/>
           </div>
           <span className="pm-chart-count">{s.count}</span>
         </div>
       ))}
-
-      {/* Category bars */}
       <p className="pm-chart-section-label" style={{ marginTop: 12 }}>Risk by Category</p>
       {data.categories.map(c => (
         <div key={c.label} className="pm-chart-row">
           <span className="pm-chart-label">{c.label}</span>
           <div className="pm-chart-bar-bg">
-            <div className="pm-chart-bar" style={{
-              width: `${(c.count / maxCat) * 100}%`,
-              background: '#3498db'
-            }}/>
+            <div className="pm-chart-bar" style={{ width: `${(c.count / maxCat) * 100}%`, background: '#3498db' }}/>
           </div>
           <span className="pm-chart-count">{c.count}</span>
         </div>
       ))}
-
-      {/* Top risks table */}
       {data.top_risks?.length > 0 && (
         <>
           <p className="pm-chart-section-label" style={{ marginTop: 12 }}>Top Risks</p>
           {data.top_risks.map((r, i) => (
             <div key={i} className="pm-risk-row">
-              <span className="pm-risk-badge" style={{ background: sevColors[r.severity] || '#888' }}>
-                {r.severity}
-              </span>
+              <span className="pm-risk-badge" style={{ background: sevColors[r.severity] || '#888' }}>{r.severity}</span>
               <span className="pm-risk-title">{r.title}</span>
               <span className="pm-risk-clause">{r.clause}</span>
             </div>
@@ -314,6 +255,7 @@ const LegalChartView = ({ data }) => {
     </div>
   );
 };
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function UserDashboard() {
   const navigate   = useNavigate();
@@ -322,115 +264,67 @@ export default function UserDashboard() {
   const textarea   = useRef(null);
   const dropZone   = useRef(null);
 
-  const [user,          setUser]          = useState(null);
-  const [sessions,      setSessions]      = useState([]);
-  const [activeId,      setActiveId]      = useState(null);
-  const [messages,      setMessages]      = useState([]);
-  const [input,         setInput]         = useState('');
-  const [files,         setFiles]         = useState([]);
-  const [fileProgress,  setFileProgress]  = useState({});
-  const [agent,         setAgent]         = useState('general');
-  const [sending,       setSending]       = useState(false);
-  const [streaming,     setStreaming]     = useState(false);
-  const [histLoad,      setHistLoad]      = useState(false);
-  const [sidebarOpen,   setSidebarOpen]   = useState(true);
-  const [docSidebarOpen,setDocSidebarOpen]= useState(false);
+  const [user,           setUser]           = useState(null);
+  const [sessions,       setSessions]       = useState([]);
+  const [activeId,       setActiveId]       = useState(null);
+  const [messages,       setMessages]       = useState([]);
+  const [input,          setInput]          = useState('');
+  const [files,          setFiles]          = useState([]);
+  const [fileProgress,   setFileProgress]   = useState({});
+  const [agent,          setAgent]          = useState('general');
+  const [sending,        setSending]        = useState(false);
+  const [streaming,      setStreaming]      = useState(false);
+  const [histLoad,       setHistLoad]       = useState(false);
+  const [sidebarOpen,    setSidebarOpen]    = useState(true);
+  const [docSidebarOpen, setDocSidebarOpen] = useState(false);
   const dragCounter = useRef(0);
-  const [dragging,      setDragging]      = useState(false);
-  const [renamingId,    setRenamingId]    = useState(null);
-  const [renameVal,     setRenameVal]     = useState('');
-  const [uploadedDocs,  setUploadedDocs]  = useState([]);
-  const [viewingDoc,    setViewingDoc]    = useState(null);
-  const [searchQuery,   setSearchQuery]   = useState('');
-  const [authLoading,   setAuthLoading]   = useState(true);
-  const [authError,     setAuthError]     = useState(null);
+  const [dragging,       setDragging]       = useState(false);
+  const [renamingId,     setRenamingId]     = useState(null);
+  const [renameVal,      setRenameVal]      = useState('');
+  const [uploadedDocs,   setUploadedDocs]   = useState([]);
+  const [viewingDoc,     setViewingDoc]     = useState(null);
+  const [searchQuery,    setSearchQuery]    = useState('');
+  const [authLoading,    setAuthLoading]    = useState(true);
+  const [authError,      setAuthError]      = useState(null);
 
-  // ── Auth ────────────────────────────────────────────────────────────────────
-useEffect(() => {
-  let cancelled = false;
-  console.log("API_URL:", API_URL);
+  // ── Auth — read token from localStorage, no server round-trip needed ─────────
+  useEffect(() => {
+    const token = getToken();
+    const storedUser = localStorage.getItem('user');
 
-  fetch(`${API_URL}/auth/user`, {
-    method: "GET",
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  })
-    .then(async (response) => {
-      if (cancelled) return;   
-      const data = await response.json();
-
-      console.log("Response Data:", data);
-
-      if (!response.ok) {
-        throw new Error(JSON.stringify(data));
+    if (token && storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        navigate('/login');
       }
+    } else if (DEMO_MODE) {
+      setUser({ email: 'demo@example.com', firstName: 'Demo' });
+      setSessions([{
+        sessionId: 'demo', title: 'Demo Session',
+        updatedAt: new Date().toISOString(), messageCount: 0,
+      }]);
+      setActiveId('demo');
+      setMessages([]);
+    } else {
+      navigate('/login');
+    }
 
-      if (data.user) {
-        console.log("Authenticated:", data.user);
-        setUser(data.user);
-      } else if (DEMO_MODE) {
-        setUser({
-          email: "demo@example.com",
-          firstName: "Demo",
-        });
-
-        setSessions([
-          {
-            sessionId: "demo",
-            title: "Demo Session",
-            updatedAt: new Date().toISOString(),
-            messageCount: 0,
-          },
-        ]);
-
-        setActiveId("demo");
-        setMessages([]);
-      } else {
-        console.log("No authenticated user.");
-        navigate("/login");
-      }
-    })
-    .catch((err) => {
-      console.error("Auth Error:", err);
-
-      if (DEMO_MODE) {
-        setUser({
-          email: "demo@example.com",
-          firstName: "Demo",
-        });
-
-        setSessions([
-          {
-            sessionId: "demo",
-            title: "Demo Session",
-            updatedAt: new Date().toISOString(),
-            messageCount: 0,
-          },
-        ]);
-
-        setActiveId("demo");
-        setMessages([]);
-      } else {
-        navigate("/login");
-      }
-    })
-    .finally(() => {
-      setAuthLoading(false);
-    });
-    return () => { cancelled = true; }
-}, [navigate]);
+    setAuthLoading(false);
+  }, [navigate]);
 
   // ── Sessions ────────────────────────────────────────────────────────────────
   const loadSessions = useCallback(async () => {
     try {
-      const r = await fetch(`${API_URL}/api/sessions`, { credentials: 'include' });
+      const r = await authFetch(`${API_URL}/api/sessions`);
+      if (r.status === 401) { navigate('/login'); return; }
       if (!r.ok) throw new Error('Failed to load sessions');
       const d = await r.json();
       setSessions(Array.isArray(d?.sessions) ? d.sessions : []);
     } catch { setSessions([]); }
-  }, []);
+  }, [navigate]);
 
   useEffect(() => { if (user) loadSessions(); }, [user, loadSessions]);
 
@@ -444,7 +338,7 @@ useEffect(() => {
     if (session?.documents) {
       setUploadedDocs(session.documents.map(name => ({ name, size: 0 })));
     }
-    fetch(`${API_URL}/api/chat/${activeId}`, { credentials: 'include' })
+    authFetch(`${API_URL}/api/chat/${activeId}`)
       .then(r => { if (!r.ok) throw new Error('Failed to load chat'); return r.json(); })
       .then(d => setMessages(
         (d.messages || []).flatMap(m => [
@@ -531,33 +425,31 @@ useEffect(() => {
       form.append('agent', agent);
       form.append('question', text);
       form.append('stream', 'true');
-
-      // FIX (Task 2): always send the current activeId so the backend reuses
-      // the same session instead of minting a new one on every message.
       if (activeId) form.append('sessionId', activeId);
-
       pendingFiles.forEach(f => {
         form.append('files', f);
         form.append('documents', f.name);
       });
-
       const sessionDocs = sessions.find(s => s.sessionId === activeId)?.documents || [];
       sessionDocs.forEach(d => form.append('documents', d));
 
-      const r = await fetch(`${API_URL}/api/chat`, {
-        method: 'POST', credentials: 'include', body: form,
-      });
+      // authFetch without Content-Type so browser sets multipart boundary
+      const r = await authFetch(`${API_URL}/api/chat`, { method: 'POST', body: form });
 
       finalizeProgress(fileIndices);
+
+      if (r.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        navigate('/login');
+        return;
+      }
 
       if (!r.ok) {
         const err = await r.json().catch(() => ({}));
         throw new Error(err.error || `HTTP ${r.status}`);
       }
 
-      // FIX (Task 2): read X-Session-Id from proxy response so the UI learns
-      // the session id even for the first message (header is now forwarded
-      // correctly by server.js).
       newSessionId = r.headers.get('x-session-id') || r.headers.get('X-Session-Id');
       if (!activeId && newSessionId) setActiveId(newSessionId);
 
@@ -576,12 +468,8 @@ useEffect(() => {
           const token = line.slice(6);
           if (token === '[DONE]') break;
           setMessages(prev => {
-            if (token.includes('[REDACTED]')) {
-              console.warn('TOKEN CONTAINS REDACTION:', token);
-            }
             if (botIndex === null) {
               botIndex = prev.length;
-              // streaming:true defers flashcard extraction until response is complete
               return [...prev, { role: 'bot', content: token, ts: new Date().toISOString(), streaming: true }];
             }
             return prev.map((m, i) => i === botIndex ? { ...m, content: m.content + token } : m);
@@ -589,7 +477,6 @@ useEffect(() => {
         }
       }
 
-      // Mark stream as complete so flashcard extraction runs on full content
       if (botIndex !== null) {
         setMessages(prev => prev.map((m, i) =>
           i === botIndex ? { ...m, streaming: false } : m
@@ -604,34 +491,21 @@ useEffect(() => {
       const currentSessionId  = newSessionId || activeId;
 
       if (!activeId && newSessionId) {
-        // Brand-new session — fetch the full session list from the server so
-        // the sidebar shows it immediately with correct metadata.
         await loadSessions();
-        if (uploadedFileNames.length > 0) {
-          updateSessionMetadata(newSessionId, agent, uploadedFileNames);
-        }
+        if (uploadedFileNames.length > 0) updateSessionMetadata(newSessionId, agent, uploadedFileNames);
       } else if (currentSessionId) {
-        // Existing session — update in-place without a round-trip.
         const existingDocs = sessions.find(s => s.sessionId === currentSessionId)?.documents || [];
         const newDocs = uploadedFileNames.length > 0
           ? [...new Set([...existingDocs, ...uploadedFileNames])]
           : undefined;
-
         setSessions(prev => prev.map(s =>
           s.sessionId === currentSessionId
-            ? {
-                ...s,
-                lastMessage:  { message: text },
-                updatedAt:    new Date().toISOString(),
+            ? { ...s, lastMessage: { message: text }, updatedAt: new Date().toISOString(),
                 messageCount: (s.messageCount || 0) + 1,
-                documents:    newDocs !== undefined ? newDocs : s.documents,
-              }
+                documents: newDocs !== undefined ? newDocs : s.documents }
             : s
         ));
-
-        if (uploadedFileNames.length > 0) {
-          updateSessionMetadata(currentSessionId, agent, newDocs);
-        }
+        if (uploadedFileNames.length > 0) updateSessionMetadata(currentSessionId, agent, newDocs);
       }
     } catch (err) {
       finalizeProgress(fileIndices);
@@ -650,9 +524,9 @@ useEffect(() => {
   const handleKey = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } };
   const newChat   = () => { setActiveId(null); setMessages([]); setFiles([]); setUploadedDocs([]); setFileProgress({}); textarea.current?.focus(); };
 
-  const logout = async () => {
-    try { await fetch(`${API_URL}/auth/logout`, { credentials: 'include', method: 'GET', mode: 'cors' }); }
-    catch (err) { console.error('Logout error:', err); }
+  const logout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setUser(null); setSessions([]); setMessages([]);
     navigate('/login', { replace: true });
   };
@@ -662,8 +536,8 @@ useEffect(() => {
     const title = renameVal.trim();
     if (!title) { setRenamingId(null); return; }
     try {
-      await fetch(`${API_URL}/api/chat/${sessionId}/rename`, {
-        method: 'PATCH', credentials: 'include',
+      await authFetch(`${API_URL}/api/chat/${sessionId}/rename`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title }),
       });
@@ -676,7 +550,7 @@ useEffect(() => {
     e.stopPropagation();
     if (!window.confirm('Delete this chat?')) return;
     try {
-      await fetch(`${API_URL}/api/chat/${sessionId}`, { method: 'DELETE', credentials: 'include' });
+      await authFetch(`${API_URL}/api/chat/${sessionId}`, { method: 'DELETE' });
       setSessions(prev => prev.filter(s => s.sessionId !== sessionId));
       if (activeId === sessionId) { setActiveId(null); setMessages([]); }
     } catch { /* silent */ }
@@ -690,8 +564,8 @@ useEffect(() => {
   const updateSessionMetadata = async (sessionId, newAgent, newDocs) => {
     if (!sessionId || !user?.email) return;
     try {
-      await fetch(`${API_URL}/api/chat/${sessionId}/metadata`, {
-        method: 'PATCH', credentials: 'include',
+      await authFetch(`${API_URL}/api/chat/${sessionId}/metadata`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ documents: newDocs }),
       });
@@ -879,26 +753,18 @@ useEffect(() => {
                   </>
                 ) : (
                   (() => {
-                    // Only run extraction after streaming is complete
-                    if (!m.streaming && m.content)  {
-                      console.log("BOT FINAL:", m.content.slice(0, 200));
+                    if (!m.streaming && m.content) {
                       const fc = extractFlashcardData(m.content);
-                      console.log("FLASHCARD RESULT:", fc);
                       if (fc) {
                         return (
                           <>
                             {fc.summary && <BotMsg text={fc.summary}/>}
-                            <FlashcardLink
-                              cards={fc.cards}
-                              summary={fc.summary}
-                              navigate={navigate}
-                            />
+                            <FlashcardLink cards={fc.cards} summary={fc.summary} navigate={navigate}/>
                           </>
                         );
-                      }const chart = extractChartData(m.content);
-                      if (chart) {
-                        return <LegalChartView data={chart}/>;
                       }
+                      const chart = extractChartData(m.content);
+                      if (chart) return <LegalChartView data={chart}/>;
                     }
                     return <BotMsg text={m.content}/>;
                   })()

@@ -11,10 +11,9 @@ dotenv.config({ path: path.resolve(__dirname, ".env") });
 import express from "express";
 import mongoose from "mongoose";
 import passport from "./passport.js";
-import session from "express-session";
-import MongoStore from "connect-mongo";
 import cors from "cors";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 import axios from "axios";
 import multer from "multer";
 import fs from "fs";
@@ -24,9 +23,13 @@ import rateLimit from "express-rate-limit";
 import User from "./Database/User.js";
 
 const app = express();
-app.set('trust proxy', 1);
+app.set("trust proxy", 1);
 
 const FASTAPI_URL = process.env.FASTAPI_URL;
+const FRONTEND_URL = process.env.FRONTEND_URL;
+const JWT_SECRET = process.env.JWT_SECRET; // Add this to your Railway env vars
+
+console.log("FRONTEND_URL:", FRONTEND_URL);
 
 // ───────────────── Upload directory ─────────────────
 const uploadsDir = path.join(__dirname, "uploads");
@@ -49,9 +52,6 @@ const upload = multer({
 // ───────────────── Middleware ─────────────────
 app.use(express.json());
 
-const FRONTEND_URL = process.env.FRONTEND_URL;
-console.log(FRONTEND_URL);
-
 app.use(
   cors({
     origin: FRONTEND_URL,
@@ -62,94 +62,55 @@ app.use(
   })
 );
 
-const sessionStore = MongoStore.create({
-  mongoUrl: process.env.MONGO_URI,
-  collectionName: "sessions",
-});
-
-sessionStore.on("error", (err) => {
-  console.error("Session store error:", err);
-});
-
-sessionStore.on("create", (sessionId) => {
-  console.log("Session created in store:", sessionId);
-});
-
-app.use(
-  session({
-    name: "connect.sid",
-    secret: process.env.SESSION_SECRET,
-    store: sessionStore,
-    proxy: true,
-    resave: false,
-    saveUninitialized: false,
-    rolling: true,
-    cookie: {
-      path: "/",
-      httpOnly: true,
-      secure: true,
-      sameSite: "none",
-      maxAge: 24 * 60 * 60 * 1000,
-    },
-  })
-);
-
-app.use(passport.initialize());
-app.use(passport.session());
-
-app.use((req, res, next) => {
-  console.log(
-    "[DEBUG]", req.method, req.path,
-    "| cookie header present:", !!req.headers.cookie,
-    "| session.id:", req.sessionID,
-    "| session.user:", req.session ? JSON.stringify(req.session.user) : "(no req.session)",
-    "| req.user (passport):", JSON.stringify(req.user),
-  );
-  console.log("Secure:", req.secure);
-  console.log("Protocol:", req.protocol);
-  console.log("X-Forwarded-Proto:", req.headers["x-forwarded-proto"]);
-  next();
-});
-
-// Google OAuth
-app.get(
-  "/auth/google",
-  passport.authenticate("google", { scope: ["profile", "email"] })
-);
-
-app.get(
-  "/auth/google/callback",
-  passport.authenticate("google", { failureRedirect: `${FRONTEND_URL}/login` }),
-  (req, res) => {
-    console.log("Google user:", req.user);
-    res.redirect(`${FRONTEND_URL}/userDashboard`);
+// ───────────────── JWT Auth guard ─────────────────
+const requireAuth = (req, res, next) => {
+  const header = req.headers.authorization;
+  if (!header?.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Not authenticated" });
   }
-);
+  try {
+    const decoded = jwt.verify(header.split(" ")[1], JWT_SECRET);
+    req.currentUser = decoded;
+    next();
+  } catch {
+    return res.status(401).json({ error: "Invalid or expired token" });
+  }
+};
 
 // ───────────────── Rate limiters ─────────────────
-const chatLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 20,
-});
-
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 30,
-});
-
-// ───────────────── Auth guard ─────────────────
-const requireAuth = (req, res, next) => {
-  const user = req.user || req.session.user;
-  if (!user?.email) return res.status(401).json({ error: "Not authenticated" });
-  req.currentUser = user;
-  next();
-};
+const chatLimiter = rateLimit({ windowMs: 60 * 1000, max: 20 });
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30 });
 
 // ───────────────── MongoDB ─────────────────
 mongoose
   .connect(process.env.MONGO_URI)
   .then((c) => console.log("MongoDB connected:", c.connection.name))
   .catch((err) => console.error("MongoDB error:", err.message));
+
+// ───────────────── Google OAuth ─────────────────
+// NOTE: Google OAuth redirects don't support Authorization headers.
+// After Google callback, issue a JWT and redirect with it as a query param.
+app.use(passport.initialize());
+
+app.get(
+  "/auth/google",
+  passport.authenticate("google", { scope: ["profile", "email"], session: false })
+);
+
+app.get(
+  "/auth/google/callback",
+  passport.authenticate("google", { failureRedirect: `${FRONTEND_URL}/login`, session: false }),
+  (req, res) => {
+    const user = req.user;
+    const token = jwt.sign(
+      { id: user._id.toString(), email: user.email, firstName: user.firstName },
+      JWT_SECRET,
+      { expiresIn: "24h" }
+    );
+    // Redirect to frontend with token — frontend stores it in localStorage
+    res.redirect(`${FRONTEND_URL}/auth/callback?token=${token}`);
+  }
+);
 
 // ───────────────── Auth routes ─────────────────
 app.post("/auth/register", authLimiter, async (req, res) => {
@@ -164,14 +125,7 @@ app.post("/auth/register", authLimiter, async (req, res) => {
 
     const hashed = await bcrypt.hash(password, 10);
 
-    await new User({
-      firstName,
-      lastName,
-      email,
-      password: hashed,
-      phone,
-      countryCode,
-    }).save();
+    await new User({ firstName, lastName, email, password: hashed, phone, countryCode }).save();
 
     res.status(201).json({ message: "Account created" });
   } catch (err) {
@@ -190,56 +144,30 @@ app.post("/auth/login", authLimiter, async (req, res) => {
       return res.status(400).json({ error: "Invalid credentials" });
     }
 
-    req.session.regenerate((err) => {
-      if (err) {
-        return res.status(500).json({ error: "Session creation failed" });
-      }
+    const token = jwt.sign(
+      { id: user._id.toString(), email: user.email, firstName: user.firstName },
+      JWT_SECRET,
+      { expiresIn: "24h" }
+    );
 
-      req.session.user = {
-        id: user._id.toString(),
-        email: user.email,
-        firstName: user.firstName,
-      };
-      req.session.save((err) => {
-        if (err) return res.status(500).json({ error: "Login failed" });
-
-        // ── Manually set cookie so Railway proxy can't strip it ──
-        res.cookie("connect.sid", req.sessionID, {
-          httpOnly: true,
-          secure: true,
-          sameSite: "none",
-          maxAge: 24 * 60 * 60 * 1000,
-          path: "/",
-        });
-      req.session.save((err) => {
-        if (err) {
-          return res.status(500).json({ error: "Login failed" });
-        }
-
-        res.json({
-          message: "Logged in",
-          user: req.session.user,
-        });
-      });
+    res.json({
+      message: "Logged in",
+      token,
+      user: { id: user._id.toString(), email: user.email, firstName: user.firstName },
     });
-
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-app.get("/auth/user", (req, res) => {
-  console.log(
-    "[DEBUG] /auth/user | session.id:", req.sessionID,
-    "| req.session.user:", JSON.stringify(req.session.user),
-    "| req.user:", JSON.stringify(req.user),
-  );
-  res.json({ user: req.user || req.session.user || null });
+app.get("/auth/user", requireAuth, (req, res) => {
+  res.json({ user: req.currentUser });
 });
 
 app.get("/auth/logout", (req, res) => {
-  req.session.destroy(() => res.redirect(FRONTEND_URL));
+  // JWT is stateless — just tell the frontend to clear storage
+  res.json({ success: true });
 });
 
 // ───────────────── File cleanup helper ─────────────────
@@ -267,14 +195,12 @@ app.post(
     }
 
     const form = new FormData();
-
     form.append("agent", agent);
     form.append("username", req.currentUser.email);
     form.append("question", question);
     if (typeof sessionId === "string" && sessionId.trim().length > 0) {
       form.append("sessionId", sessionId.trim());
     }
-
     if (stream) form.append("stream", stream);
 
     (req.files || []).forEach((f) => {
@@ -285,7 +211,6 @@ app.post(
     });
 
     const fastapiUrl = new URL(`${FASTAPI_URL}/chat`);
-
     const options = {
       hostname: fastapiUrl.hostname,
       port: fastapiUrl.port || 8000,
@@ -297,11 +222,8 @@ app.post(
 
     const proxyReq = http.request(options, (proxyRes) => {
       const blocked = new Set(["connection", "transfer-encoding", "keep-alive"]);
-
       for (const [key, value] of Object.entries(proxyRes.headers)) {
-        if (!blocked.has(key.toLowerCase())) {
-          res.setHeader(key, value);
-        }
+        if (!blocked.has(key.toLowerCase())) res.setHeader(key, value);
       }
 
       const sessionIdHeader = proxyRes.headers["x-session-id"];
@@ -311,26 +233,20 @@ app.post(
 
       res.statusCode = proxyRes.statusCode;
       res.flushHeaders();
-
       proxyRes.on("end", () => cleanFiles(req.files));
-
       proxyRes.pipe(res);
     });
 
     proxyReq.on("error", (err) => {
       cleanFiles(req.files);
       console.error("Chat proxy error:", err.message);
-      if (!res.headersSent) {
-        res.status(500).json({ error: "Chat service failed" });
-      }
+      if (!res.headersSent) res.status(500).json({ error: "Chat service failed" });
     });
 
     proxyReq.on("timeout", () => {
       proxyReq.destroy();
       cleanFiles(req.files);
-      if (!res.headersSent) {
-        res.status(504).json({ error: "FastAPI timeout" });
-      }
+      if (!res.headersSent) res.status(504).json({ error: "FastAPI timeout" });
     });
 
     form.pipe(proxyReq);
@@ -353,9 +269,7 @@ app.get("/api/sessions", requireAuth, async (req, res) => {
 app.get("/api/chat/:sessionId", requireAuth, async (req, res) => {
   try {
     const r = await axios.get(
-      `${FASTAPI_URL}/chat/${encodeURIComponent(
-        req.currentUser.email
-      )}/${encodeURIComponent(req.params.sessionId)}`
+      `${FASTAPI_URL}/chat/${encodeURIComponent(req.currentUser.email)}/${encodeURIComponent(req.params.sessionId)}`
     );
     res.json(r.data);
   } catch {
@@ -368,9 +282,7 @@ app.patch("/api/chat/:sessionId/metadata", requireAuth, async (req, res) => {
   const { documents } = req.body;
   try {
     const r = await axios.patch(
-      `${FASTAPI_URL}/chat/${encodeURIComponent(
-        req.currentUser.email
-      )}/${encodeURIComponent(req.params.sessionId)}/metadata`,
+      `${FASTAPI_URL}/chat/${encodeURIComponent(req.currentUser.email)}/${encodeURIComponent(req.params.sessionId)}/metadata`,
       { documents }
     );
     res.json(r.data);
@@ -386,9 +298,7 @@ app.patch("/api/chat/:sessionId/rename", requireAuth, async (req, res) => {
     const form = new URLSearchParams();
     form.append("title", title);
     const r = await axios.patch(
-      `${FASTAPI_URL}/chat/${encodeURIComponent(
-        req.currentUser.email
-      )}/${encodeURIComponent(req.params.sessionId)}/rename`,
+      `${FASTAPI_URL}/chat/${encodeURIComponent(req.currentUser.email)}/${encodeURIComponent(req.params.sessionId)}/rename`,
       form.toString(),
       { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
     );
@@ -402,9 +312,7 @@ app.patch("/api/chat/:sessionId/rename", requireAuth, async (req, res) => {
 app.delete("/api/chat/:sessionId", requireAuth, async (req, res) => {
   try {
     const r = await axios.delete(
-      `${FASTAPI_URL}/chat/${encodeURIComponent(
-        req.currentUser.email
-      )}/${encodeURIComponent(req.params.sessionId)}`
+      `${FASTAPI_URL}/chat/${encodeURIComponent(req.currentUser.email)}/${encodeURIComponent(req.params.sessionId)}`
     );
     res.json(r.data);
   } catch {
@@ -414,12 +322,8 @@ app.delete("/api/chat/:sessionId", requireAuth, async (req, res) => {
 
 // ───────────────── Static frontend ─────────────────
 const frontendBuild = path.join(__dirname, "..", "dist");
-
 app.use(express.static(frontendBuild));
-
-app.get("/", (_, res) =>
-  res.sendFile(path.join(frontendBuild, "index.html"))
-);
+app.get("/", (_, res) => res.sendFile(path.join(frontendBuild, "index.html")));
 
 // ───────────────── Error middleware ─────────────────
 app.use((err, req, res, next) => {
@@ -429,7 +333,4 @@ app.use((err, req, res, next) => {
 
 // ───────────────── Start server ─────────────────
 const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

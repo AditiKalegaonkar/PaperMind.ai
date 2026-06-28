@@ -7,8 +7,8 @@ import { Link, useNavigate } from "react-router-dom";
 
 const API_URL = import.meta.env.VITE_API_URL;
 if (!API_URL) {
-    console.error("VITE_API_URL is not set — check your .env file.");
-  }
+  console.error("VITE_API_URL is not set — check your .env file.");
+}
 
 const Login = () => {
   const navigate = useNavigate();
@@ -22,16 +22,14 @@ const Login = () => {
     setError("");
 
     try {
-      const res = await axios.post(
-        `${API_URL}/auth/login`,
-        { email, password },
-        { withCredentials: true }
-      );
-      
-      if (res.data.user || res.data.success) {
+      const res = await axios.post(`${API_URL}/auth/login`, { email, password });
+
+      if (res.data.token) {
+        localStorage.setItem("token", res.data.token);
+        localStorage.setItem("user", JSON.stringify(res.data.user));
         navigate("/userDashboard", { replace: true });
-      } else if (res.data.error) {
-        setError(res.data.error);
+      } else {
+        setError(res.data.error || "Login failed");
       }
     } catch (err) {
       console.error("Login error:", err);
@@ -90,11 +88,11 @@ const Login = () => {
                 Forgot password?
               </a>
             </div>
+
             <button type="submit" className="login-button">
               Log In
             </button>
           </form>
-
 
           {error && (
             <p style={{ color: "red", fontSize: "12px" }}>{error}</p>
@@ -111,9 +109,7 @@ const Login = () => {
           <div className="sso-buttons">
             <button
               className="sso"
-              onClick={() =>
-                (window.location.href = `${API_URL}/auth/google`)
-              }
+              onClick={() => (window.location.href = `${API_URL}/auth/google`)}
             >
               <img
                 src={Googlelogo}

@@ -20,8 +20,8 @@ const EyeIcon = ({ visible }) =>
 
 const API_URL = import.meta.env.VITE_API_URL;
 if (!API_URL) {
-    console.error("VITE_API_URL is not set — check your .env file.");
-  }
+  console.error("VITE_API_URL is not set — check your .env file.");
+}
 
 const SignUp = () => {
   const navigate = useNavigate();
@@ -34,10 +34,11 @@ const SignUp = () => {
     lastName: '',
     email: '',
     password: '',
-    phone: ''
   });
 
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -45,39 +46,35 @@ const SignUp = () => {
 
   const togglePasswordVisibility = () => setShowPassword(prev => !prev);
 
-  // Register user
   const handleRegister = async (e) => {
     e.preventDefault();
+    setError('');
+    setLoading(true);
 
     const { firstName, lastName, email, password } = formData;
 
-    const payload = {
-      firstName,
-      lastName,
-      email,
-      password,
-      phone,          // number
-      countryCode     // added for new server.js
-    };
+    const payload = { firstName, lastName, email, password, phone, countryCode };
 
     try {
       const res = await fetch(`${API_URL}/auth/register`, {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
 
       if (data.error) {
-        alert(data.error);
+        setError(data.error);
       } else {
         alert(data.message);
         navigate("/login");
       }
     } catch (err) {
       console.error("Register error:", err);
+      setError("Registration failed. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -136,16 +133,17 @@ const SignUp = () => {
                 onChange={handleChange}
                 required
               />
-              <span
-                className="toggle-password"
-                onClick={togglePasswordVisibility}
-              >
+              <span className="toggle-password" onClick={togglePasswordVisibility}>
                 <EyeIcon visible={showPassword} />
               </span>
             </div>
 
-            <button type="submit" className="signup-button">
-              Register
+            {error && (
+              <p style={{ color: 'red', fontSize: '12px', margin: '4px 0' }}>{error}</p>
+            )}
+
+            <button type="submit" className="signup-button" disabled={loading}>
+              {loading ? 'Registering…' : 'Register'}
             </button>
           </form>
 
