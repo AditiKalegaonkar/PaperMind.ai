@@ -2,7 +2,7 @@ from google.adk.agents import Agent
 from google.adk.tools import FunctionTool, ToolContext
 from google.adk.tools.agent_tool import AgentTool
 from tools.RAG import run_rag_pipeline
-import io
+from google.genai import types
 import os
 
 
@@ -71,6 +71,11 @@ general_rag_agent = Agent(
     If a summary already exists in session state, use it for answering questions.
     Don't re-run RAG if you already have the summary.
     """,
+    generate_content_config=types.GenerateContentConfig(
+          temperature=0.3,
+          max_output_tokens=2048,   
+          top_p=0.95,
+    ),
     tools=[rag_function_tool, file_path_tool],
 )
 

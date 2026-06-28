@@ -2,6 +2,7 @@ from google.adk.agents import Agent
 from tools.tool import get_legal_definition
 from .webAgent import search_the_web_tool
 from google.adk.tools.agent_tool import AgentTool
+from google.genai import types
 
 legal_dict_agent = Agent(
     name="legal_tool_agent",
@@ -21,6 +22,11 @@ legal_dict_agent = Agent(
     - If all tools fail, answer directly from your own knowledge.
     - Always keep answers clear and under 1500 characters.
     """,
+    generate_content_config=types.GenerateContentConfig(
+          temperature=0.3,
+          max_output_tokens=2048,   
+          top_p=0.95,
+    ),
     tools=[get_legal_definition, search_the_web_tool]
 )
 

@@ -3,9 +3,8 @@ from google.adk.tools import FunctionTool, ToolContext
 from .flashcard_agent import flashcard_agent_tool
 from .Rag_agent import rag_agent_tool
 from google.adk.tools import AgentTool
+from google.genai import types
 
-from dotenv import load_dotenv
-load_dotenv()
 
 
 def store_quiz_data(correct_answer: str, tool_context: ToolContext):
@@ -49,6 +48,11 @@ education_agent = Agent(
     When the user sends their next message:
     1.  Comparison:Check 'correct_quiz_key'*. If found, extract the user's letter and compare it against the stored key.
     2.  Feedback & Cleanup: Provide feedback. *Clear the 'correct_quiz_key'* afterward.""",
+    generate_content_config=types.GenerateContentConfig(
+          temperature=0.3,
+          max_output_tokens=2048,   
+          top_p=0.95,
+    ),
     tools=[rag_agent_tool, flashcard_agent_tool, quiz_storage_tool],
 )
 

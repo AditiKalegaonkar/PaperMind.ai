@@ -201,7 +201,7 @@ def run_rag_pipeline(user_path: str, question: str) -> str:
         search_kwargs={"k": 6, "fetch_k": 20, "lambda_mult": 0.6},
     )
 
-    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.3)
+    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.3, max_output_tokens=2048)
 
     # variables — no more double-injection of the question string.
     prompt = PromptTemplate(

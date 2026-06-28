@@ -25,7 +25,7 @@ import User from "./Database/User.js";
 const app = express();
 app.set('trust proxy', 1);
 
-const FASTAPI_URL = process.env.FLASK_API_URL;
+const FASTAPI_URL = process.env.FASTAPI_URL;
 
 // ───────────────── Upload directory ─────────────────
 const uploadsDir = path.join(__dirname, "uploads");

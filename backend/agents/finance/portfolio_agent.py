@@ -2,10 +2,7 @@ import yfinance as yf
 from google.adk.agents import Agent
 from google.adk.tools.function_tool import FunctionTool
 from google.adk.tools.agent_tool import AgentTool
-from dotenv import load_dotenv
-
-load_dotenv()
-
+from google.genai import types
 
 def get_stock_info(symbol: str) -> dict:
     """
@@ -128,6 +125,11 @@ portfolio_analyzer_agent = Agent(
     
     Always present data in a clear, organized manner suitable for financial analysis.
     """,
+    generate_content_config=types.GenerateContentConfig(
+          temperature=0.3,
+          max_output_tokens=2048,   
+          top_p=0.95,
+    ),
     tools=[get_stock_info_tool, get_portfolio_holdings_tool, calculate_allocation_tool],
 )
 

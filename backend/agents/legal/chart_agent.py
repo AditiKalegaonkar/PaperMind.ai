@@ -1,5 +1,6 @@
 from google.adk.agents import Agent
 from google.adk.tools.agent_tool import AgentTool
+from google.genai import types
 
 chart_data_agent = Agent(
     name="chart_data_agent",
@@ -39,6 +40,11 @@ chart_data_agent = Agent(
     - If a category has 0 risks, still include it with count: 0
     - Infer counts carefully from the analysis text; do not hallucinate.
     """,
+    generate_content_config=types.GenerateContentConfig(
+          temperature=0.3,
+          max_output_tokens=2048,   
+          top_p=0.95,
+      ),
     tools=[]
 )
 

@@ -6,6 +6,7 @@ from google.adk.agents import Agent
 from google.adk.tools import ToolContext
 from dotenv import load_dotenv
 from google.adk.tools.agent_tool import AgentTool
+from google.genai import types
 
 load_dotenv()
 
@@ -67,6 +68,11 @@ finance_agent = Agent(
     Always provide clear, actionable financial insights with appropriate disclaimers.
     Remind users that this is not financial advice and they should consult a financial advisor.
     """,
+    generate_content_config=types.GenerateContentConfig(
+          temperature=0.3,
+          max_output_tokens=2048,   
+          top_p=0.95,
+    ),
     tools=[
         finance_rag_agent_tool,
         portfolio_analyzer_tool,

@@ -5,7 +5,10 @@ import "./Login.css";
 import Googlelogo from "../assets/google-logo.png";
 import { Link, useNavigate } from "react-router-dom";
 
-const API_URL = "https://papermindai-production-72e1.up.railway.app";
+const API_URL = import.meta.env.VITE_API_URL;
+if (!API_URL) {
+    console.error("VITE_API_URL is not set — check your .env file.");
+  }
 
 const Login = () => {
   const navigate = useNavigate();

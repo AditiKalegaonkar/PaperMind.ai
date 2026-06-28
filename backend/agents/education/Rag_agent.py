@@ -1,11 +1,10 @@
 from google.adk.agents import Agent
 from google.adk.tools import FunctionTool, ToolContext
 from google.adk.tools.agent_tool import AgentTool
-from tools.QdrantRAG import run_qdrant_rag
 from tools.RAG import run_rag_pipeline
 from tools.prompts import EDUCATION_RAG
-import io
 import os
+from google.genai import types
 
 
 def get_file_path(file_path: str, tool_context: ToolContext):
@@ -49,6 +48,11 @@ rag_agent = Agent(
     If a summary already exists in session state, use it for answering questions.
     Don't re-run RAG if you already have the summary.
     """,
+    generate_content_config=types.GenerateContentConfig(
+          temperature=0.3,
+          max_output_tokens=2048,   
+          top_p=0.95,
+    ),
     tools=[rag_function_tool, file_path_tool],
 )
 

@@ -35,15 +35,36 @@ logging.basicConfig(
 )
 log = logging.getLogger("papermind")
 
+# Fail fast on missing required env vars, instead of starting "successfully"
+# and crashing later on the first request that touches them.
+_REQUIRED_ENV_VARS = ["MONGODB_URL", "GOOGLE_API_KEY"]
+_missing = [v for v in _REQUIRED_ENV_VARS if not os.getenv(v)]
+if _missing:
+    log.error(
+        "Missing required environment variable(s): %s. Set these in Railway's Variables tab.",
+        ", ".join(_missing),
+    )
+    raise RuntimeError(f"Missing required environment variables: {', '.join(_missing)}")
+
+# Warn if Railway's auto-injected PORT won't match what this app reads.
+if os.getenv("NODE_ENV") and os.getenv("PORT") and not os.getenv("FAST_API_PORT"):
+    log.warning(
+        "Railway set PORT=%s but FAST_API_PORT is unset — set FAST_API_PORT to match or the health check may fail.",
+        os.getenv("PORT"),
+    )
+
 # ── MongoDB ───────────────────────────────────────────────────────────────────
 MONGODB_URL = os.getenv("MONGODB_URL")
-client = motor.motor_asyncio.AsyncIOMotorClient(MONGODB_URL)
+client = motor.motor_asyncio.AsyncIOMotorClient(
+    MONGODB_URL,
+    serverSelectionTimeoutMS=5000,  # fail fast instead of hanging on a bad URI
+)
 try:
     db = client.get_default_database()
     log.info("Connected to MongoDB database: %s", db.name)
-except Exception:
+except Exception as e:
     db = client.papermind_db
-    log.info("No DB in URL, defaulting to: %s", db.name)
+    log.warning("No DB name in MONGODB_URL (%s) — defaulting to: %s", e, db.name)
 
 users_collection = db.users
 chats_collection = db.chats
@@ -61,6 +82,17 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 @asynccontextmanager
 async def lifespan(app: "FastAPI"):
     global session_service
+
+    # Motor connects lazily, so verify Mongo is reachable before serving traffic.
+    try:
+        await db.command("ping")
+        log.info("MongoDB ping succeeded — database reachable.")
+    except Exception as e:
+        log.error(
+            "MongoDB unreachable at startup: %s. Check MONGODB_URL and Atlas Network Access (Railway uses dynamic IPs, often needs 0.0.0.0/0).",
+            e,
+        )
+
     try:
         session_service = DatabaseSessionService(SESSION_DB_URL)
         log.info("ADK Session service initialized")
@@ -68,11 +100,21 @@ async def lifespan(app: "FastAPI"):
         log.error(f"Failed to initialize ADK session service: {e}")
         session_service = None
 
-    await chats_collection.create_index(
-        [("userId", 1), ("sessions.sessionId", 1)],
-        name="userId_sessionId",
-    )
-    log.info("MongoDB indexes ensured.")
+    # Railway's filesystem is ephemeral without a mounted Volume — flag it.
+    if not os.getenv("RAILWAY_VOLUME_MOUNT_PATH"):
+        log.warning(
+            "No Railway volume detected — SQLite session DB and uploaded files will be wiped on redeploy.",
+        )
+
+    try:
+        await chats_collection.create_index(
+            [("userId", 1), ("sessions.sessionId", 1)],
+            name="userId_sessionId",
+        )
+        log.info("MongoDB indexes ensured.")
+    except Exception as e:
+        log.error("Failed to ensure MongoDB indexes: %s", e)
+
     yield
 
 
@@ -114,9 +156,6 @@ def _get_runner(agent_type: str) -> Runner:
     agent = _get_agent(agent_type_lower)
     if not agent:
         raise ValueError(f"Unknown agent type: {agent_type}")
-    # FIX: Do NOT cache runners. A cached runner built before session_service
-    # was ready uses InMemorySessionService permanently, losing all session
-    # history. Runners are lightweight — creating one per request is correct.
     if session_service:
         return Runner(agent=agent, app_name=APP_NAME, session_service=session_service)
     from google.adk.sessions import InMemorySessionService
@@ -179,9 +218,6 @@ async def _add_session_to_mongo(user_id: ObjectId, chat_id: str, adk_id: str, ag
                     "title": None,
                     "messages": [],
                     "documents": [],
-                    # FIX #2: store file_paths list per session so uploaded
-                    # files are remembered across follow-up messages in the
-                    # same chat without re-uploading.
                     "filePaths": [],
                     "createdAt": datetime.now(),
                     "updatedAt": datetime.now(),
@@ -210,7 +246,6 @@ async def _update_adk_id(user_id: ObjectId, chat_id: str, adk_id: str):
     )
 
 
-# FIX #2 helpers: read / append stored file paths for a session
 async def _get_session_file_paths(user_id: ObjectId, chat_id: str) -> List[str]:
     """Return the list of absolute file paths stored for this session."""
     doc = await chats_collection.find_one(
@@ -261,10 +296,6 @@ def read_file_content(path: str) -> str:
         return ""
 
 
-# FIX #3: Build agent-specific prompts that correctly embed absolute file paths
-# so every agent receives a path it can open. Previously the general branch
-# omitted the file-path block entirely, and other branches used an inconsistent
-# indented f-string that prepended whitespace to the path string.
 def _build_prompt(agent_type: str, query: str, file_paths: List[str]) -> str:
     """Return the full prompt string for the given agent type."""
     agent_type_lower = agent_type.lower()
@@ -353,12 +384,27 @@ async def _stream_process(
 
 @app.get("/health")
 async def health_check():
+    """Returns 503 when Mongo is unreachable, so Railway's health check reflects reality."""
     try:
         await db.command("ping")
-        mongo = "connected"
+        mongo_status = "connected"
+        mongo_ok = True
     except Exception as e:
-        mongo = f"error: {e}"
-    return {"status": "ok", "mongodb": mongo, "db_name": db.name}
+        mongo_status = f"error: {e}"
+        mongo_ok = False
+        log.error("Health check: MongoDB unreachable: %s", e)
+
+    payload = {
+        "status": "ok" if mongo_ok else "degraded",
+        "mongodb": mongo_status,
+        "db_name": db.name,
+        "session_service": "ready" if session_service else "unavailable (using in-memory fallback)",
+    }
+
+    if not mongo_ok:
+        return JSONResponse(status_code=503, content=payload)
+
+    return payload
 
 
 @app.post("/chat")
@@ -379,10 +425,21 @@ async def chat(
     if files:
         for f in files:
             if f and f.filename:
-                safe = f"{username}_{datetime.now().timestamp()}_{f.filename}"
+                # Sanitize the filename: strip any directory components so a
+                # Strip directory components to prevent path traversal.
+                safe_filename = os.path.basename(f.filename)
+                safe = f"{username}_{datetime.now().timestamp()}_{safe_filename}"
                 dest = os.path.join(UPLOAD_DIR, safe)
-                with open(dest, "wb") as buf:
-                    shutil.copyfileobj(f.file, buf)
+                try:
+                    with open(dest, "wb") as buf:
+                        shutil.copyfileobj(f.file, buf)
+                except OSError as e:
+                    # e.g. disk full, or UPLOAD_DIR not writable.
+                    log.error("Failed to save upload %s: %s", f.filename, e)
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"Could not save uploaded file '{f.filename}'. Check server storage.",
+                    )
                 new_file_paths.append(dest)
                 log.info("Saved upload: %s", dest)
 
@@ -401,9 +458,6 @@ async def chat(
         adk_id = await _create_adk_session(username)
         await _add_session_to_mongo(user_id, active_chat_id, adk_id, agent)
 
-    # FIX #2: Merge previously stored paths for this session with any new ones.
-    # This means the user only has to upload a PDF once per chat session —
-    # subsequent messages automatically include the same files.
     stored_paths = await _get_session_file_paths(user_id, active_chat_id)
     if new_file_paths:
         await _append_session_file_paths(user_id, active_chat_id, new_file_paths)
@@ -547,4 +601,13 @@ async def get_session(username: str, session_id: str):
 
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    # Prefer Railway's auto-injected PORT; fall back to FAST_API_PORT for local/dev.
+    port_str = os.getenv("PORT") or os.getenv("FAST_API_PORT", "8000")
+    try:
+        port = int(port_str)
+    except ValueError:
+        log.error("Invalid port value %r — falling back to 8000.", port_str)
+        port = 8000
+
+    log.info("Starting FastAPI on 0.0.0.0:%d", port)
+    uvicorn.run("main:app", host="0.0.0.0", port=port)

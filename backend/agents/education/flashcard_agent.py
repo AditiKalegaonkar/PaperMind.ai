@@ -1,5 +1,6 @@
 from google.adk.agents import Agent
 from google.adk.tools.agent_tool import AgentTool
+from google.genai import types
 
 flashcard_agent = Agent(
     name="flashcard_agent",
@@ -40,7 +41,12 @@ flashcard_agent = Agent(
         - Do NOT include explanations.
         - Do NOT include trailing text before or after the JSON.
         - Do NOT include any extra keys or fields.
-    """
+    """,
+    generate_content_config=types.GenerateContentConfig(
+          temperature=0.3,
+          max_output_tokens=2048,   
+          top_p=0.95,
+    ),
 )
 
 # Flashcard Agent wrapped as an AgentTool for delegation

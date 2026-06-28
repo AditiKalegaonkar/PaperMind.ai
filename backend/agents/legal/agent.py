@@ -7,6 +7,7 @@ from google.adk.agents import Agent
 from google.adk.tools import ToolContext
 from dotenv import load_dotenv
 from google.adk.tools.agent_tool import AgentTool
+from google.genai import types
 
 load_dotenv()
 
@@ -48,6 +49,11 @@ legal_agent = Agent(
         { ...json from chart_data_agent... }
         <<<CHART_DATA_END>>>
     """,
+    generate_content_config=types.GenerateContentConfig(
+          temperature=0.3,
+          max_output_tokens=2048,   
+          top_p=0.95,
+    ),
     tools=[
         rag_agent_tool,
         legal_dict_agent_tool,

@@ -2,9 +2,7 @@ import yfinance as yf
 from google.adk.agents import Agent
 from google.adk.tools import FunctionTool
 from google.adk.tools.agent_tool import AgentTool
-from dotenv import load_dotenv
-
-load_dotenv()
+from google.genai import types
 
 
 def analyze_stock(symbol: str) -> dict:
@@ -197,6 +195,11 @@ recommendation_agent = Agent(
     
     Disclaimer: Always remind users that this is not financial advice and they should consult a financial advisor.
     """,
+    generate_content_config=types.GenerateContentConfig(
+          temperature=0.3,
+          max_output_tokens=2048,   
+          top_p=0.95,
+    ),
     tools=[analyze_stock_tool, get_recommendation_tool, compare_stocks_tool],
 )
 

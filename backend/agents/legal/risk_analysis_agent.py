@@ -1,6 +1,7 @@
 from google.adk.agents import Agent
 from google.adk.tools import google_search
 from google.adk.tools.agent_tool import AgentTool
+from google.genai import types
 
 risk_analyser_agent = Agent(
     name="risk_analyser_agent",
@@ -22,6 +23,11 @@ risk_analyser_agent = Agent(
             - Provide clear, concise, and professional analytical commentary suitable for legal-risk reporting.
             - If needed, use google_search to verify definitions or contextual information.
         """,
+        generate_content_config=types.GenerateContentConfig(
+          temperature=0.3,
+          max_output_tokens=2048,   
+          top_p=0.95,
+    ),
     tools=[google_search]
 )
 

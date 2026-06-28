@@ -4,7 +4,11 @@ import Markdown from 'react-markdown';
 import './UserDashboard.css';
 import DocumentViewer from '../Components/DocumentViewer';
 
-const API = import.meta.env.VITE_API_URL || 'https://papermindai-production-72e1.up.railway.app';
+const API = import.meta.env.VITE_API_URL;
+if (!API_URL) {
+    console.error("VITE_API_URL is not set — check your .env file.");
+  }
+  
 const AGENTS = [
   { id: 'general',   name: 'General',   desc: 'General assistant' },
   { id: 'legal',     name: 'Legal',     desc: 'Legal document analysis' },
