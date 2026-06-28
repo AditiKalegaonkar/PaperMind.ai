@@ -1,7 +1,6 @@
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
-import http from "http";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -27,9 +26,10 @@ app.set("trust proxy", 1);
 
 const FASTAPI_URL = process.env.FASTAPI_URL;
 const FRONTEND_URL = process.env.FRONTEND_URL;
-const JWT_SECRET = process.env.JWT_SECRET; // Add this to your Railway env vars
+const JWT_SECRET = process.env.JWT_SECRET;
 
 console.log("FRONTEND_URL:", FRONTEND_URL);
+console.log("FASTAPI_URL:", FASTAPI_URL);
 
 // ───────────────── Upload directory ─────────────────
 const uploadsDir = path.join(__dirname, "uploads");
@@ -88,8 +88,6 @@ mongoose
   .catch((err) => console.error("MongoDB error:", err.message));
 
 // ───────────────── Google OAuth ─────────────────
-// NOTE: Google OAuth redirects don't support Authorization headers.
-// After Google callback, issue a JWT and redirect with it as a query param.
 app.use(passport.initialize());
 
 app.get(
@@ -107,7 +105,6 @@ app.get(
       JWT_SECRET,
       { expiresIn: "24h" }
     );
-    // Redirect to frontend with token — frontend stores it in localStorage
     res.redirect(`${FRONTEND_URL}/auth/callback?token=${token}`);
   }
 );
@@ -124,7 +121,6 @@ app.post("/auth/register", authLimiter, async (req, res) => {
       return res.status(400).json({ error: "Email already registered" });
 
     const hashed = await bcrypt.hash(password, 10);
-
     await new User({ firstName, lastName, email, password: hashed, phone, countryCode }).save();
 
     res.status(201).json({ message: "Account created" });
@@ -137,7 +133,6 @@ app.post("/auth/register", authLimiter, async (req, res) => {
 app.post("/auth/login", authLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
-
     const user = await User.findOne({ email });
 
     if (!user || !(await bcrypt.compare(password, user.password))) {
@@ -166,7 +161,6 @@ app.get("/auth/user", requireAuth, (req, res) => {
 });
 
 app.get("/auth/logout", (req, res) => {
-  // JWT is stateless — just tell the frontend to clear storage
   res.json({ success: true });
 });
 
@@ -186,8 +180,12 @@ app.post(
   requireAuth,
   chatLimiter,
   upload.array("files", 5),
-  (req, res) => {
+  async (req, res) => {
     const { agent, question, sessionId, stream } = req.body;
+
+    console.log("CHAT HIT — user:", req.currentUser?.email);
+    console.log("FASTAPI_URL:", FASTAPI_URL);
+    console.log("agent:", agent, "| question:", question?.slice(0, 60));
 
     if (!agent || !question) {
       cleanFiles(req.files);
@@ -210,46 +208,50 @@ app.post(
       });
     });
 
-    const fastapiUrl = new URL(`${FASTAPI_URL}/chat`);
-    const options = {
-      hostname: fastapiUrl.hostname,
-      port: fastapiUrl.port || 8000,
-      path: fastapiUrl.pathname,
-      method: "POST",
-      headers: form.getHeaders(),
-      timeout: 120000,
-    };
+    try {
+      console.log("Proxying to:", `${FASTAPI_URL}/chat`);
 
-    const proxyReq = http.request(options, (proxyRes) => {
-      const blocked = new Set(["connection", "transfer-encoding", "keep-alive"]);
-      for (const [key, value] of Object.entries(proxyRes.headers)) {
-        if (!blocked.has(key.toLowerCase())) res.setHeader(key, value);
+      const fastapiRes = await axios.post(`${FASTAPI_URL}/chat`, form, {
+        headers: form.getHeaders(),
+        responseType: "stream",
+        timeout: 120000,
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity,
+      });
+
+      // Forward session headers to frontend
+      const sessionIdHeader = fastapiRes.headers["x-session-id"];
+      const adkHeader       = fastapiRes.headers["x-adk-session-id"];
+      if (sessionIdHeader) res.setHeader("X-Session-Id", sessionIdHeader);
+      if (adkHeader)       res.setHeader("X-Adk-Session-Id", adkHeader);
+
+      // Forward content-type so SSE streams correctly
+      if (fastapiRes.headers["content-type"]) {
+        res.setHeader("Content-Type", fastapiRes.headers["content-type"]);
       }
 
-      const sessionIdHeader = proxyRes.headers["x-session-id"];
-      const adkHeader = proxyRes.headers["x-adk-session-id"];
-      if (sessionIdHeader) res.setHeader("X-Session-Id", sessionIdHeader);
-      if (adkHeader) res.setHeader("X-Adk-Session-Id", adkHeader);
+      res.statusCode = fastapiRes.status;
+      fastapiRes.data.pipe(res);
+      fastapiRes.data.on("end", () => cleanFiles(req.files));
+      fastapiRes.data.on("error", (err) => {
+        console.error("FastAPI stream error:", err.message);
+        cleanFiles(req.files);
+      });
 
-      res.statusCode = proxyRes.statusCode;
-      res.flushHeaders();
-      proxyRes.on("end", () => cleanFiles(req.files));
-      proxyRes.pipe(res);
-    });
-
-    proxyReq.on("error", (err) => {
+    } catch (err) {
       cleanFiles(req.files);
       console.error("Chat proxy error:", err.message);
-      if (!res.headersSent) res.status(500).json({ error: "Chat service failed" });
-    });
-
-    proxyReq.on("timeout", () => {
-      proxyReq.destroy();
-      cleanFiles(req.files);
-      if (!res.headersSent) res.status(504).json({ error: "FastAPI timeout" });
-    });
-
-    form.pipe(proxyReq);
+      if (err.response) {
+        console.error("FastAPI status:", err.response.status);
+        // Drain error stream for logging
+        let errBody = "";
+        err.response.data.on("data", (chunk) => { errBody += chunk; });
+        err.response.data.on("end", () => console.error("FastAPI error body:", errBody));
+      }
+      if (!res.headersSent) {
+        res.status(502).json({ error: "Chat service error", detail: err.message });
+      }
+    }
   }
 );
 
@@ -260,7 +262,8 @@ app.get("/api/sessions", requireAuth, async (req, res) => {
       `${FASTAPI_URL}/sessions/${encodeURIComponent(req.currentUser.email)}`
     );
     res.json(r.data);
-  } catch {
+  } catch (err) {
+    console.error("Sessions error:", err.message);
     res.json({ sessions: [] });
   }
 });
@@ -272,7 +275,8 @@ app.get("/api/chat/:sessionId", requireAuth, async (req, res) => {
       `${FASTAPI_URL}/chat/${encodeURIComponent(req.currentUser.email)}/${encodeURIComponent(req.params.sessionId)}`
     );
     res.json(r.data);
-  } catch {
+  } catch (err) {
+    console.error("Chat history error:", err.message);
     res.json({ messages: [] });
   }
 });
@@ -286,7 +290,8 @@ app.patch("/api/chat/:sessionId/metadata", requireAuth, async (req, res) => {
       { documents }
     );
     res.json(r.data);
-  } catch {
+  } catch (err) {
+    console.error("Metadata error:", err.message);
     res.json({ success: false });
   }
 });
@@ -303,7 +308,8 @@ app.patch("/api/chat/:sessionId/rename", requireAuth, async (req, res) => {
       { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
     );
     res.json(r.data);
-  } catch {
+  } catch (err) {
+    console.error("Rename error:", err.message);
     res.json({ success: false });
   }
 });
@@ -315,7 +321,8 @@ app.delete("/api/chat/:sessionId", requireAuth, async (req, res) => {
       `${FASTAPI_URL}/chat/${encodeURIComponent(req.currentUser.email)}/${encodeURIComponent(req.params.sessionId)}`
     );
     res.json(r.data);
-  } catch {
+  } catch (err) {
+    console.error("Delete error:", err.message);
     res.status(500).json({ error: "Delete failed" });
   }
 });
