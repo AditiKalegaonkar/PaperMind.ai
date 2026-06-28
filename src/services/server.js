@@ -80,7 +80,7 @@ sessionStore.on("create", (sessionId) => {
 
 app.use(
   session({
-    name: connect.sid,
+    name: "connect.sid",
     secret: process.env.SESSION_SECRET,
     store: sessionStore,
     proxy: true,
