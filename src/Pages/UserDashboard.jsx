@@ -4,7 +4,7 @@ import Markdown from 'react-markdown';
 import './UserDashboard.css';
 import DocumentViewer from '../Components/DocumentViewer';
 
-const API = import.meta.env.VITE_API_URL;
+const API_URL = import.meta.env.VITE_API_URL;
 if (!API_URL) {
     console.error("VITE_API_URL is not set — check your .env file.");
   }
@@ -347,7 +347,7 @@ export default function UserDashboard() {
 
   // ── Auth ────────────────────────────────────────────────────────────────────
   useEffect(() => {
-    fetch(`${API}/auth/user`, { credentials: 'include' })
+    fetch(`${API_URL}/auth/user`, { credentials: 'include' })
       .then(r => { if (!r.ok) throw new Error('Network error'); return r.json(); })
       .then(d => {
         if (d.user) {
