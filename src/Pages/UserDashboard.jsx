@@ -346,35 +346,82 @@ export default function UserDashboard() {
   const [authError,     setAuthError]     = useState(null);
 
   // ── Auth ────────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    fetch(`${API_URL}/auth/user`, { credentials: 'include' })
-      .then(r => { if (!r.ok) throw new Error('Network error'); return r.json(); })
-      .then(d => {
-        if (d.user) {
-          setUser(d.user);
-        } else if (DEMO_MODE) {
-          setUser({ email: 'demo@example.com', firstName: 'Demo' });
-          setSessions([{ sessionId: 'demo', title: 'Demo Session', updatedAt: new Date().toISOString(), messageCount: 0 }]);
-          setActiveId('demo');
-          setMessages([]);
-        } else {
-          navigate('/login');
-        }
-      })
-      .catch(err => {
-        console.error('Auth error:', err);
-        if (DEMO_MODE) {
-          setUser({ email: 'demo@example.com', firstName: 'Demo' });
-          setSessions([{ sessionId: 'demo', title: 'Demo Session', updatedAt: new Date().toISOString(), messageCount: 0 }]);
-          setActiveId('demo');
-          setMessages([]);
-        } else {
-          // Navigate to login — don't set authError since we're redirecting anyway
-          navigate('/login');
-        }
-      })
-      .finally(() => setAuthLoading(false));
-  }, [navigate]);
+useEffect(() => {
+  console.log("API_URL:", API_URL);
+
+  fetch(`${API_URL}/auth/user`, {
+    method: "GET",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  })
+    .then(async (response) => {
+      console.log("Status:", response.status);
+      console.log("Response URL:", response.url);
+      console.log("Redirected:", response.redirected);
+
+      const data = await response.json();
+
+      console.log("Response Data:", data);
+
+      if (!response.ok) {
+        throw new Error(JSON.stringify(data));
+      }
+
+      if (data.user) {
+        console.log("Authenticated:", data.user);
+        setUser(data.user);
+      } else if (DEMO_MODE) {
+        setUser({
+          email: "demo@example.com",
+          firstName: "Demo",
+        });
+
+        setSessions([
+          {
+            sessionId: "demo",
+            title: "Demo Session",
+            updatedAt: new Date().toISOString(),
+            messageCount: 0,
+          },
+        ]);
+
+        setActiveId("demo");
+        setMessages([]);
+      } else {
+        console.log("No authenticated user.");
+        navigate("/login");
+      }
+    })
+    .catch((err) => {
+      console.error("Auth Error:", err);
+
+      if (DEMO_MODE) {
+        setUser({
+          email: "demo@example.com",
+          firstName: "Demo",
+        });
+
+        setSessions([
+          {
+            sessionId: "demo",
+            title: "Demo Session",
+            updatedAt: new Date().toISOString(),
+            messageCount: 0,
+          },
+        ]);
+
+        setActiveId("demo");
+        setMessages([]);
+      } else {
+        navigate("/login");
+      }
+    })
+    .finally(() => {
+      setAuthLoading(false);
+    });
+}, [navigate]);
 
   // ── Sessions ────────────────────────────────────────────────────────────────
   const loadSessions = useCallback(async () => {
