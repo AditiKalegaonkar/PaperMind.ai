@@ -25,7 +25,6 @@ import User from "./Database/User.js";
 
 const app = express();
 app.set('trust proxy', true);
-app.options("*", cors());
 
 const FASTAPI_URL = process.env.FASTAPI_URL;
 
@@ -50,7 +49,8 @@ const upload = multer({
 // ───────────────── Middleware ─────────────────
 app.use(express.json());
 
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+const FRONTEND_URL = process.env.FRONTEND_URL;
+console.log(FRONTEND_URL);
 
 app.use(
   cors({
@@ -82,7 +82,7 @@ app.use(
     store: sessionStore,
     proxy: true,
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false,
     rolling: true,
     cookie: {
       path: "/",
@@ -195,12 +195,14 @@ app.post("/auth/login", authLimiter, async (req, res) => {
         return res.status(500).json({ error: "Session creation failed" });
       }
 
+      console.log(req.session.user);
       req.session.user = {
         id: user._id.toString(),
         email: user.email,
         firstName: user.firstName,
       };
 
+      console.log(req.session);
       req.session.save((err) => {
         if (err) {
           return res.status(500).json({ error: "Login failed" });
