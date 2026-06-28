@@ -195,14 +195,22 @@ app.post("/auth/login", authLimiter, async (req, res) => {
         return res.status(500).json({ error: "Session creation failed" });
       }
 
-      console.log(req.session.user);
       req.session.user = {
         id: user._id.toString(),
         email: user.email,
         firstName: user.firstName,
       };
+      req.session.save((err) => {
+        if (err) return res.status(500).json({ error: "Login failed" });
 
-      console.log(req.session);
+        // ── Manually set cookie so Railway proxy can't strip it ──
+        res.cookie("connect.sid", req.sessionID, {
+          httpOnly: true,
+          secure: true,
+          sameSite: "none",
+          maxAge: 24 * 60 * 60 * 1000,
+          path: "/",
+        });
       req.session.save((err) => {
         if (err) {
           return res.status(500).json({ error: "Login failed" });
