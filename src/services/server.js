@@ -24,7 +24,7 @@ import rateLimit from "express-rate-limit";
 import User from "./Database/User.js";
 
 const app = express();
-app.set('trust proxy', 1);
+app.set('trust proxy', true);
 
 const FASTAPI_URL = process.env.FASTAPI_URL;
 
