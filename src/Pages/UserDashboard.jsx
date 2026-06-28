@@ -379,7 +379,7 @@ export default function UserDashboard() {
   // ── Sessions ────────────────────────────────────────────────────────────────
   const loadSessions = useCallback(async () => {
     try {
-      const r = await fetch(`${API}/api/sessions`, { credentials: 'include' });
+      const r = await fetch(`${API_URL}/api/sessions`, { credentials: 'include' });
       if (!r.ok) throw new Error('Failed to load sessions');
       const d = await r.json();
       setSessions(Array.isArray(d?.sessions) ? d.sessions : []);
@@ -398,7 +398,7 @@ export default function UserDashboard() {
     if (session?.documents) {
       setUploadedDocs(session.documents.map(name => ({ name, size: 0 })));
     }
-    fetch(`${API}/api/chat/${activeId}`, { credentials: 'include' })
+    fetch(`${API_URL}/api/chat/${activeId}`, { credentials: 'include' })
       .then(r => { if (!r.ok) throw new Error('Failed to load chat'); return r.json(); })
       .then(d => setMessages(
         (d.messages || []).flatMap(m => [
@@ -498,7 +498,7 @@ export default function UserDashboard() {
       const sessionDocs = sessions.find(s => s.sessionId === activeId)?.documents || [];
       sessionDocs.forEach(d => form.append('documents', d));
 
-      const r = await fetch(`${API}/api/chat`, {
+      const r = await fetch(`${API_URL}/api/chat`, {
         method: 'POST', credentials: 'include', body: form,
       });
 
@@ -605,7 +605,7 @@ export default function UserDashboard() {
   const newChat   = () => { setActiveId(null); setMessages([]); setFiles([]); setUploadedDocs([]); setFileProgress({}); textarea.current?.focus(); };
 
   const logout = async () => {
-    try { await fetch(`${API}/auth/logout`, { credentials: 'include', method: 'GET', mode: 'cors' }); }
+    try { await fetch(`${API_URL}/auth/logout`, { credentials: 'include', method: 'GET', mode: 'cors' }); }
     catch (err) { console.error('Logout error:', err); }
     setUser(null); setSessions([]); setMessages([]);
     navigate('/login', { replace: true });
@@ -616,7 +616,7 @@ export default function UserDashboard() {
     const title = renameVal.trim();
     if (!title) { setRenamingId(null); return; }
     try {
-      await fetch(`${API}/api/chat/${sessionId}/rename`, {
+      await fetch(`${API_URL}/api/chat/${sessionId}/rename`, {
         method: 'PATCH', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title }),
@@ -630,7 +630,7 @@ export default function UserDashboard() {
     e.stopPropagation();
     if (!window.confirm('Delete this chat?')) return;
     try {
-      await fetch(`${API}/api/chat/${sessionId}`, { method: 'DELETE', credentials: 'include' });
+      await fetch(`${API_URL}/api/chat/${sessionId}`, { method: 'DELETE', credentials: 'include' });
       setSessions(prev => prev.filter(s => s.sessionId !== sessionId));
       if (activeId === sessionId) { setActiveId(null); setMessages([]); }
     } catch { /* silent */ }
@@ -644,7 +644,7 @@ export default function UserDashboard() {
   const updateSessionMetadata = async (sessionId, newAgent, newDocs) => {
     if (!sessionId || !user?.email) return;
     try {
-      await fetch(`${API}/api/chat/${sessionId}/metadata`, {
+      await fetch(`${API_URL}/api/chat/${sessionId}/metadata`, {
         method: 'PATCH', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ documents: newDocs }),
