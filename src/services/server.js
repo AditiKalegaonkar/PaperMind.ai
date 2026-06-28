@@ -81,6 +81,7 @@ app.use(
     secret: process.env.SESSION_SECRET,
     store: sessionStore,
     resave: false,
+    proxy: true,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
