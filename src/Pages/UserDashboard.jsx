@@ -347,6 +347,7 @@ export default function UserDashboard() {
 
   // ── Auth ────────────────────────────────────────────────────────────────────
 useEffect(() => {
+  let cancelled = false;
   console.log("API_URL:", API_URL);
 
   fetch(`${API_URL}/auth/user`, {
@@ -357,10 +358,7 @@ useEffect(() => {
     },
   })
     .then(async (response) => {
-      console.log("Status:", response.status);
-      console.log("Response URL:", response.url);
-      console.log("Redirected:", response.redirected);
-
+      if (cancelled) return;   
       const data = await response.json();
 
       console.log("Response Data:", data);
@@ -421,6 +419,7 @@ useEffect(() => {
     .finally(() => {
       setAuthLoading(false);
     });
+    return () => { cancelled = true; }
 }, [navigate]);
 
   // ── Sessions ────────────────────────────────────────────────────────────────
