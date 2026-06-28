@@ -64,10 +64,6 @@ app.use(
 const sessionStore = MongoStore.create({
   mongoUrl: process.env.MONGO_URI,
   collectionName: "sessions",
-  // touchAfter: only re-save the session if it hasn't been written in this
-  // many seconds, since per-request writes are unnecessary overhead. Default
-  // omitted on purpose for now while debugging — add back to 24*3600 once
-  // confirmed working, to reduce write load.
 });
 
 sessionStore.on("error", (err) => {
@@ -108,6 +104,9 @@ app.use((req, res, next) => {
     "| session.user:", req.session ? JSON.stringify(req.session.user) : "(no req.session)",
     "| req.user (passport):", JSON.stringify(req.user),
   );
+  console.log("Secure:", req.secure);
+  console.log("Protocol:", req.protocol);
+  console.log("X-Forwarded-Proto:", req.headers["x-forwarded-proto"]);
   next();
 });
 
