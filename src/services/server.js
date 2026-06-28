@@ -53,8 +53,10 @@ const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
 app.use(
   cors({
-    origin: [FRONTEND_URL],
+    origin: FRONTEND_URL,
     credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     exposedHeaders: ["X-Session-Id", "X-Adk-Session-Id"],
   })
 );
@@ -78,12 +80,15 @@ sessionStore.on("create", (sessionId) => {
 
 app.use(
   session({
+    name: "__Host-connect.sid",
     secret: process.env.SESSION_SECRET,
     store: sessionStore,
-    resave: false,
     proxy: true,
+    resave: false,
     saveUninitialized: false,
+    rolling: true,
     cookie: {
+      path: "/",
       httpOnly: true,
       secure: true,
       sameSite: "none",
@@ -188,32 +193,36 @@ app.post("/auth/login", authLimiter, async (req, res) => {
 
     const user = await User.findOne({ email });
 
-    if (!user || !(await bcrypt.compare(password, user.password)))
+    if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(400).json({ error: "Invalid credentials" });
+    }
 
-    req.session.user = {
-      id: user._id,
-      email: user.email,
-      firstName: user.firstName,
-    };
-
-    // TEMPORARY DEBUG: explicitly save and log before responding, instead of
-    // relying on express-session's automatic save-on-response-end. This
-    // tells us whether the save actually completes (and with what session
-    // ID) before the client ever sees the Set-Cookie header.
-    req.session.save((err) => {
+    req.session.regenerate((err) => {
       if (err) {
-        console.error("[DEBUG] session.save error on login:", err);
-        return res.status(500).json({ error: "Login failed (session save error)" });
+        return res.status(500).json({ error: "Session creation failed" });
       }
-      console.log(
-        "[DEBUG] /auth/login saved session.id:", req.sessionID,
-        "| user:", JSON.stringify(req.session.user),
-      );
-      res.json({ message: "Logged in", user: req.session.user });
+
+      req.session.user = {
+        id: user._id.toString(),
+        email: user.email,
+        firstName: user.firstName,
+      };
+
+      req.session.save((err) => {
+        if (err) {
+          return res.status(500).json({ error: "Login failed" });
+        }
+
+        res.json({
+          message: "Logged in",
+          user: req.session.user,
+        });
+      });
     });
-  } catch {
-    res.status(500).json({ error: "Login failed" });
+
+  } catch (err) {
+    console.error("Login error:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
