@@ -80,7 +80,7 @@ sessionStore.on("create", (sessionId) => {
 
 app.use(
   session({
-    name: "__Host-connect.sid",
+    name: __Host-connect.sid,
     secret: process.env.SESSION_SECRET,
     store: sessionStore,
     proxy: true,
@@ -100,13 +100,6 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-// ── TEMPORARY DEBUG MIDDLEWARE ──────────────────────────────────────────────
-// Logs, for every request: the raw cookie header, the session ID Express
-// resolved it to, and whether req.session.user exists at that point. This
-// runs AFTER the session middleware has had a chance to load the session
-// from the store, so it tells us definitively whether the deserialized
-// session actually contains user data on this specific request.
-// Remove this block once the auth issue is confirmed fixed.
 app.use((req, res, next) => {
   console.log(
     "[DEBUG]", req.method, req.path,
