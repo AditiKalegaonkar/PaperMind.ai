@@ -90,11 +90,11 @@ const Login = () => {
                 Forgot password?
               </a>
             </div>
-          </form>
 
-          <button className="login-button" onClick={handleNormalLogin}>
-            Log In
-          </button>
+            <button type="submit" className="login-button">
+              Log In
+            </button>
+          </form>
 
           {error && (
             <p style={{ color: "red", fontSize: "12px" }}>{error}</p>
@@ -110,6 +110,7 @@ const Login = () => {
 
           <div className="sso-buttons">
             <button
+              type="button"
               className="sso"
               onClick={() =>
                 (window.location.href = `${API_URL}/auth/google`)
