@@ -25,6 +25,7 @@ import User from "./Database/User.js";
 
 const app = express();
 app.set('trust proxy', true);
+app.options("*", cors());
 
 const FASTAPI_URL = process.env.FASTAPI_URL;
 
@@ -81,7 +82,7 @@ app.use(
     store: sessionStore,
     proxy: true,
     resave: false,
-    saveUninitialized: false,
+    saveUninitialized: true,
     rolling: true,
     cookie: {
       path: "/",
