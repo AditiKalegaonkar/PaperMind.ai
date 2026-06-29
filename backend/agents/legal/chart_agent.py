@@ -4,7 +4,7 @@ from google.genai import types
 
 chart_data_agent = Agent(
     name="chart_data_agent",
-    model="gemini-2.5-flash",
+    model="gemini-2.0-flash",
     description="Extracts structured chart data from a legal risk analysis summary.",
     instruction="""
     You are a data extraction agent. Your ONLY job is to read a legal risk analysis

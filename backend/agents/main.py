@@ -9,6 +9,7 @@ from typing import Optional, List, AsyncGenerator
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 from bson import ObjectId
 from dotenv import load_dotenv
 import motor.motor_asyncio
@@ -35,8 +36,6 @@ logging.basicConfig(
 )
 log = logging.getLogger("papermind")
 
-# Fail fast on missing required env vars, instead of starting "successfully"
-# and crashing later on the first request that touches them.
 _REQUIRED_ENV_VARS = ["MONGODB_URL", "GOOGLE_API_KEY"]
 _missing = [v for v in _REQUIRED_ENV_VARS if not os.getenv(v)]
 if _missing:
@@ -46,18 +45,11 @@ if _missing:
     )
     raise RuntimeError(f"Missing required environment variables: {', '.join(_missing)}")
 
-# Warn if Railway's auto-injected PORT won't match what this app reads.
-if os.getenv("NODE_ENV") and os.getenv("PORT") and not os.getenv("FAST_API_PORT"):
-    log.warning(
-        "Railway set PORT=%s but FAST_API_PORT is unset — set FAST_API_PORT to match or the health check may fail.",
-        os.getenv("PORT"),
-    )
-
 # ── MongoDB ───────────────────────────────────────────────────────────────────
 MONGODB_URL = os.getenv("MONGODB_URL")
 client = motor.motor_asyncio.AsyncIOMotorClient(
     MONGODB_URL,
-    serverSelectionTimeoutMS=5000,  # fail fast instead of hanging on a bad URI
+    serverSelectionTimeoutMS=5000,
 )
 try:
     db = client.get_default_database()
@@ -66,13 +58,13 @@ except Exception as e:
     db = client.papermind_db
     log.warning("No DB name in MONGODB_URL (%s) — defaulting to: %s", e, db.name)
 
-users_collection = db.users
-chats_collection = db.chats
+users_collection    = db.users
+chats_collection    = db.chats
 
 # ── ADK session service (SQLite) ──────────────────────────────────────────────
 session_service: Optional[DatabaseSessionService] = None
 SESSION_DB_URL = "sqlite+aiosqlite:///chat2.db"
-APP_NAME = "PaperMind"
+APP_NAME       = "PaperMind"
 
 UPLOAD_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "uploaded_files"))
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -83,13 +75,14 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 async def lifespan(app: "FastAPI"):
     global session_service
 
-    # Motor connects lazily, so verify Mongo is reachable before serving traffic.
     try:
         await db.command("ping")
         log.info("MongoDB ping succeeded — database reachable.")
     except Exception as e:
         log.error(
-            "MongoDB unreachable at startup: %s. Check MONGODB_URL and Atlas Network Access (Railway uses dynamic IPs, often needs 0.0.0.0/0).",
+            "MongoDB unreachable at startup: %s. "
+            "Check MONGODB_URL and Atlas Network Access "
+            "(Railway uses dynamic IPs — allow 0.0.0.0/0).",
             e,
         )
 
@@ -97,13 +90,13 @@ async def lifespan(app: "FastAPI"):
         session_service = DatabaseSessionService(SESSION_DB_URL)
         log.info("ADK Session service initialized")
     except Exception as e:
-        log.error(f"Failed to initialize ADK session service: {e}")
+        log.error("Failed to initialize ADK session service: %s", e)
         session_service = None
 
-    # Railway's filesystem is ephemeral without a mounted Volume — flag it.
     if not os.getenv("RAILWAY_VOLUME_MOUNT_PATH"):
         log.warning(
-            "No Railway volume detected — SQLite session DB and uploaded files will be wiped on redeploy.",
+            "No Railway volume detected — SQLite session DB and uploaded files "
+            "will be wiped on redeploy.",
         )
 
     try:
@@ -131,6 +124,12 @@ app.add_middleware(
 )
 
 
+# ── Pydantic models ───────────────────────────────────────────────────────────
+class MetadataUpdate(BaseModel):
+    documents: Optional[List[str]] = None
+    agent:     Optional[str]       = None
+
+
 # ── Agent cache ───────────────────────────────────────────────────────────────
 _cached_agents: dict = {}
 
@@ -140,14 +139,14 @@ def _get_agent(agent_type: str) -> Optional[Agent]:
     if agent_type_lower in _cached_agents:
         return _cached_agents[agent_type_lower]
     agent = {
-        "general": general_rag_agent,
-        "legal": legal_agent,
+        "general":   general_rag_agent,
+        "legal":     legal_agent,
         "education": education_agent,
-        "finance": finance_agent,
+        "finance":   finance_agent,
     }.get(agent_type_lower)
     if agent:
         _cached_agents[agent_type_lower] = agent
-        log.info(f"Cached {agent_type_lower} agent")
+        log.info("Cached %s agent", agent_type_lower)
     return agent
 
 
@@ -174,8 +173,10 @@ async def _ensure_chat_doc(user_id: ObjectId) -> dict:
     doc = await chats_collection.find_one({"userId": user_id})
     if not doc:
         doc = {
-            "userId": user_id, "sessions": [],
-            "createdAt": datetime.now(), "updatedAt": datetime.now(),
+            "userId":    user_id,
+            "sessions":  [],
+            "createdAt": datetime.now(),
+            "updatedAt": datetime.now(),
         }
         result = await chats_collection.insert_one(doc)
         doc["_id"] = result.inserted_id
@@ -198,29 +199,31 @@ async def _create_adk_session(username: str) -> str:
         try:
             await utils.add_new_session(username, session.id)
         except Exception as e:
-            log.error(f"Failed to add new session to utility: {e}")
+            log.error("Failed to add new session to utility: %s", e)
         log.info("Created ADK session %s for %s", session.id, username)
         return session.id
     except Exception as e:
-        log.error(f"Error creating ADK session: {e}")
+        log.error("Error creating ADK session: %s", e)
         return f"{username}_{datetime.now().timestamp()}"
 
 
-async def _add_session_to_mongo(user_id: ObjectId, chat_id: str, adk_id: str, agent: str = "general"):
+async def _add_session_to_mongo(
+    user_id: ObjectId, chat_id: str, adk_id: str, agent: str = "general"
+):
     await chats_collection.update_one(
         {"userId": user_id},
         {
             "$push": {
                 "sessions": {
-                    "sessionId": chat_id,
+                    "sessionId":    chat_id,
                     "adkSessionId": adk_id,
-                    "agent": agent,
-                    "title": None,
-                    "messages": [],
-                    "documents": [],
-                    "filePaths": [],
-                    "createdAt": datetime.now(),
-                    "updatedAt": datetime.now(),
+                    "agent":        agent,
+                    "title":        None,
+                    "messages":     [],
+                    "documents":    [],
+                    "filePaths":    [],
+                    "createdAt":    datetime.now(),
+                    "updatedAt":    datetime.now(),
                 }
             },
             "$set": {"updatedAt": datetime.now()},
@@ -247,7 +250,6 @@ async def _update_adk_id(user_id: ObjectId, chat_id: str, adk_id: str):
 
 
 async def _get_session_file_paths(user_id: ObjectId, chat_id: str) -> List[str]:
-    """Return the list of absolute file paths stored for this session."""
     doc = await chats_collection.find_one(
         {"userId": user_id, "sessions.sessionId": chat_id},
         {"sessions.$": 1},
@@ -258,8 +260,9 @@ async def _get_session_file_paths(user_id: ObjectId, chat_id: str) -> List[str]:
     return []
 
 
-async def _append_session_file_paths(user_id: ObjectId, chat_id: str, new_paths: List[str]):
-    """Append new file paths to the session record."""
+async def _append_session_file_paths(
+    user_id: ObjectId, chat_id: str, new_paths: List[str]
+):
     if not new_paths:
         return
     await chats_collection.update_one(
@@ -274,29 +277,29 @@ async def _save_message(user_id: ObjectId, chat_id: str, message: str, answer: s
         {
             "$push": {
                 "sessions.$.messages": {
-                    "message": message, "answer": answer, "timestamp": datetime.now()
+                    "message":   message,
+                    "answer":    answer,
+                    "timestamp": datetime.now(),
                 }
             },
             "$set": {
                 "sessions.$.updatedAt": datetime.now(),
-                "updatedAt": datetime.now(),
+                "updatedAt":            datetime.now(),
             },
         },
     )
 
 
 def read_file_content(path: str) -> str:
-    """Read text content from a file; PDF paths are handled by the RAG tool."""
     try:
         with open(path, "r", encoding="utf-8", errors="ignore") as f:
             return f.read()
     except Exception as e:
-        log.error(f"Failed to read file {path}: {e}")
+        log.error("Failed to read file %s: %s", path, e)
         return ""
 
 
 def _build_prompt(agent_type: str, query: str, file_paths: List[str]) -> str:
-    """Return the full prompt string for the given agent type."""
     agent_type_lower = agent_type.lower()
 
     if agent_type_lower == "general":
@@ -307,10 +310,7 @@ def _build_prompt(agent_type: str, query: str, file_paths: List[str]) -> str:
     if file_paths:
         prompt += "\n\nDocuments:\n"
         for p in file_paths:
-            # Use the absolute path directly; no extra whitespace/indentation.
             prompt += f"\nFile path: {p}\n"
-            # For non-PDF text files, inline the content for agents that do
-            # not call the RAG tool themselves.
             if not p.lower().endswith(".pdf"):
                 content = read_file_content(p)
                 if content:
@@ -322,20 +322,17 @@ def _build_prompt(agent_type: str, query: str, file_paths: List[str]) -> str:
 async def _process(
     agent_type: str, username: str, adk_id: str, query: str, file_paths: List[str]
 ) -> str:
-    runner = _get_runner(agent_type)
-    prompt = _build_prompt(agent_type, query, file_paths)
+    runner  = _get_runner(agent_type)
+    prompt  = _build_prompt(agent_type, query, file_paths)
     content = types.Content(role="user", parts=[types.Part(text=prompt)])
     result_text = ""
     async for chunk in runner.run_async(
-        user_id=username,
-        session_id=adk_id,
-        new_message=content
+        user_id=username, session_id=adk_id, new_message=content
     ):
         if hasattr(chunk, "content") and chunk.content:
-            if hasattr(chunk.content, "parts") and chunk.content.parts:
-                for part in chunk.content.parts:
-                    if hasattr(part, "text") and part.text:
-                        result_text += part.text
+            for part in getattr(chunk.content, "parts", []):
+                if hasattr(part, "text") and part.text:
+                    result_text += part.text
     return result_text
 
 
@@ -343,28 +340,24 @@ async def _stream_process(
     agent_type: str, username: str, adk_id: str, query: str, file_paths: List[str]
 ) -> AsyncGenerator[str, None]:
     """Yield SSE lines `data: <token>\n\n`."""
-    runner = _get_runner(agent_type)
-    prompt = _build_prompt(agent_type, query, file_paths)
+    runner  = _get_runner(agent_type)
+    prompt  = _build_prompt(agent_type, query, file_paths)
     content = types.Content(role="user", parts=[types.Part(text=prompt)])
     try:
         async for chunk in runner.run_async(
-            user_id=username,
-            session_id=adk_id,
-            new_message=content
+            user_id=username, session_id=adk_id, new_message=content
         ):
             log.info("Chunk: %s", chunk)
             text = ""
             try:
                 if hasattr(chunk, "content") and chunk.content:
                     for part in getattr(chunk.content, "parts", []):
-                        # tool result
                         if hasattr(part, "function_response") and part.function_response:
                             response = part.function_response.response
                             if isinstance(response, str):
                                 text = response
                             elif isinstance(response, dict):
                                 text = response.get("result", "")
-                        # normal model text
                         elif hasattr(part, "text") and part.text:
                             text = part.text
             except Exception as e:
@@ -383,20 +376,19 @@ async def _stream_process(
 
 @app.get("/health")
 async def health_check():
-    """Returns 503 when Mongo is unreachable, so Railway's health check reflects reality."""
     try:
         await db.command("ping")
         mongo_status = "connected"
-        mongo_ok = True
+        mongo_ok     = True
     except Exception as e:
         mongo_status = f"error: {e}"
-        mongo_ok = False
+        mongo_ok     = False
         log.error("Health check: MongoDB unreachable: %s", e)
 
     payload = {
-        "status": "ok" if mongo_ok else "degraded",
-        "mongodb": mongo_status,
-        "db_name": db.name,
+        "status":          "ok" if mongo_ok else "degraded",
+        "mongodb":         mongo_status,
+        "db_name":         db.name,
         "session_service": "ready" if session_service else "unavailable (using in-memory fallback)",
     }
 
@@ -408,24 +400,27 @@ async def health_check():
 
 @app.post("/chat")
 async def chat(
-    agent:      str                         = Form(...),
-    username:   str                         = Form(...),
-    question:   str                         = Form(...),
-    sessionId:  Optional[str]               = Form(None),
-    stream:     Optional[str]               = Form(None),
-    files:      Optional[List[UploadFile]]  = File(None),
+    agent:     str                        = Form(...),
+    username:  str                        = Form(...),
+    question:  str                        = Form(...),
+    sessionId: Optional[str]              = Form(None),
+    stream:    Optional[str]              = Form(None),
+    files:     Optional[List[UploadFile]] = File(None),
 ):
     valid = {"legal", "education", "finance", "general"}
     if agent.lower() not in valid:
         raise HTTPException(status_code=400, detail="Invalid agent type")
 
-    # Save newly uploaded files to UPLOAD_DIR
+    log.info(
+        "Chat | user=%s agent=%s stream=%s sessionId=%s",
+        username, agent, stream, sessionId,
+    )
+
+    # ── Save uploaded files ────────────────────────────────────────────────────
     new_file_paths: List[str] = []
     if files:
         for f in files:
             if f and f.filename:
-                # Sanitize the filename: strip any directory components so a
-                # Strip directory components to prevent path traversal.
                 safe_filename = os.path.basename(f.filename)
                 safe = f"{username}_{datetime.now().timestamp()}_{safe_filename}"
                 dest = os.path.join(UPLOAD_DIR, safe)
@@ -433,7 +428,6 @@ async def chat(
                     with open(dest, "wb") as buf:
                         shutil.copyfileobj(f.file, buf)
                 except OSError as e:
-                    # e.g. disk full, or UPLOAD_DIR not writable.
                     log.error("Failed to save upload %s: %s", f.filename, e)
                     raise HTTPException(
                         status_code=500,
@@ -442,38 +436,30 @@ async def chat(
                 new_file_paths.append(dest)
                 log.info("Saved upload: %s", dest)
 
-    log.info("Step: 1")
+    # ── User + chat doc ────────────────────────────────────────────────────────
     user_id = await _get_user_id(username)
-    log.info("Step: 2")
     await _ensure_chat_doc(user_id)
 
     # ── Session resolution ─────────────────────────────────────────────────────
-    if sessionId is not None and sessionId != "":
+    if sessionId:
         active_chat_id = sessionId
-        log.info("Step 3")
         adk_id = await _get_adk_id(user_id, active_chat_id)
         if not adk_id:
-            log.info("Step 4")
             adk_id = await _create_adk_session(username)
             await _update_adk_id(user_id, active_chat_id, adk_id)
     else:
-        log.info("Step 5")
         active_chat_id = str(uuid.uuid4())
-        log.info("Step 6")
-        adk_id = await _create_adk_session(username)
-        log.info("Step 7")
+        adk_id         = await _create_adk_session(username)
         await _add_session_to_mongo(user_id, active_chat_id, adk_id, agent)
 
-    log.info("Step 8")
     stored_paths = await _get_session_file_paths(user_id, active_chat_id)
     if new_file_paths:
-        log.info("Step 9")
         await _append_session_file_paths(user_id, active_chat_id, new_file_paths)
     file_paths = stored_paths + new_file_paths
 
     log.info(
-        "Chat | user=%s session=%s agent=%s stream=%s files=%d",
-        username, active_chat_id, agent, stream, len(file_paths)
+        "Resolved | session=%s adk=%s files=%d",
+        active_chat_id, adk_id, len(file_paths),
     )
 
     # ── Streaming SSE response ─────────────────────────────────────────────────
@@ -495,32 +481,34 @@ async def chat(
                 "X-Session-Id":     active_chat_id,
                 "X-Adk-Session-Id": adk_id,
                 "Cache-Control":    "no-cache",
+                "Connection":       "keep-alive",
+                "X-Accel-Buffering": "no",
             },
         )
 
     # ── Standard JSON response ─────────────────────────────────────────────────
     answer = await _process(agent, username, adk_id, question, file_paths)
     await _save_message(user_id, active_chat_id, question, answer)
-    log.info("Returning response: %s", answer[:200])
+    log.info("Response: %s", answer[:200])
 
     return JSONResponse(
         content={
-            "sessionId": active_chat_id,
+            "sessionId":    active_chat_id,
             "adkSessionId": adk_id,
-            "response": answer,
-            "timestamp": datetime.now().isoformat()
+            "response":     answer,
+            "timestamp":    datetime.now().isoformat(),
         },
         headers={
-            "X-Session-Id": active_chat_id,
-            "X-Adk-Session-Id": adk_id
-        }
+            "X-Session-Id":     active_chat_id,
+            "X-Adk-Session-Id": adk_id,
+        },
     )
 
 
 @app.patch("/chat/{username}/{session_id}/rename")
 async def rename_session(username: str, session_id: str, title: str = Form(...)):
     user_id = await _get_user_id(username)
-    result = await chats_collection.update_one(
+    result  = await chats_collection.update_one(
         {"userId": user_id, "sessions.sessionId": session_id},
         {"$set": {"sessions.$.title": title.strip()[:60]}},
     )
@@ -530,19 +518,19 @@ async def rename_session(username: str, session_id: str, title: str = Form(...))
     return {"ok": True, "title": title.strip()[:60]}
 
 
+# ── Metadata: accepts JSON body (Node sends application/json) ─────────────────
 @app.patch("/chat/{username}/{session_id}/metadata")
 async def update_session_metadata(
-    username: str,
+    username:   str,
     session_id: str,
-    agent: Optional[str] = Form(None),
-    documents: Optional[List[str]] = Form(None)
+    body:       MetadataUpdate,
 ):
     user_id = await _get_user_id(username)
     update_fields = {}
-    if agent:
-        update_fields["sessions.$.agent"] = agent
-    if documents is not None:
-        update_fields["sessions.$.documents"] = documents
+    if body.agent:
+        update_fields["sessions.$.agent"] = body.agent
+    if body.documents is not None:
+        update_fields["sessions.$.documents"] = body.documents
     if not update_fields:
         raise HTTPException(status_code=400, detail="No fields to update")
     result = await chats_collection.update_one(
@@ -551,14 +539,17 @@ async def update_session_metadata(
     )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Session not found")
-    log.info("Updated metadata for session %s: agent=%s, docs=%s", session_id, agent, documents)
+    log.info(
+        "Updated metadata for session %s: agent=%s docs=%s",
+        session_id, body.agent, body.documents,
+    )
     return {"ok": True}
 
 
 @app.delete("/chat/{username}/{session_id}")
 async def delete_session(username: str, session_id: str):
     user_id = await _get_user_id(username)
-    result = await chats_collection.update_one(
+    result  = await chats_collection.update_one(
         {"userId": user_id},
         {"$pull": {"sessions": {"sessionId": session_id}}},
     )
@@ -571,7 +562,7 @@ async def delete_session(username: str, session_id: str):
 @app.get("/sessions/{username}")
 async def get_sessions(username: str):
     user_id = await _get_user_id(username)
-    doc = await chats_collection.find_one({"userId": user_id})
+    doc     = await chats_collection.find_one({"userId": user_id})
     if not doc:
         return {"sessions": []}
     sessions = [
@@ -597,7 +588,7 @@ async def get_sessions(username: str):
 @app.get("/chat/{username}/{session_id}")
 async def get_session(username: str, session_id: str):
     user_id = await _get_user_id(username)
-    doc = await chats_collection.find_one({"userId": user_id})
+    doc     = await chats_collection.find_one({"userId": user_id})
     if not doc:
         raise HTTPException(status_code=404, detail="No history")
     session = next(
@@ -609,13 +600,11 @@ async def get_session(username: str, session_id: str):
 
 
 if __name__ == "__main__":
-    # Prefer Railway's auto-injected PORT; fall back to FAST_API_PORT for local/dev.
     port_str = os.getenv("PORT") or os.getenv("FAST_API_PORT", "8000")
     try:
         port = int(port_str)
     except ValueError:
         log.error("Invalid port value %r — falling back to 8000.", port_str)
         port = 8000
-
     log.info("Starting FastAPI on 0.0.0.0:%d", port)
     uvicorn.run("main:app", host="0.0.0.0", port=port)

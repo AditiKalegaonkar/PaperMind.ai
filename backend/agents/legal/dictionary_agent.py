@@ -6,7 +6,7 @@ from google.genai import types
 
 legal_dict_agent = Agent(
     name="legal_tool_agent",
-    model="gemini-2.5-flash",
+    model="gemini-2.0-flash",
     description="Agent that provides legal definitions.",
     instruction="""
     You are a helpful legal assistant. You have to define difficult word according to the summary.

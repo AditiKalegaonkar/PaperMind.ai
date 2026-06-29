@@ -28,7 +28,7 @@ store_risk_tool = store_risk_tolerance
 # Root Finance Agent
 finance_agent = Agent(
     name="finance_agent",
-    model="gemini-2.5-flash",
+    model="gemini-2.0-flash",
     description="A comprehensive financial advisor agent that analyzes portfolios, provides investment recommendations, and monitors market trends",
     instruction="""
     You are a Finance Agent - a comprehensive financial advisor that helps users with:

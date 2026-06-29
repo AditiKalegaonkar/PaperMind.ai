@@ -16,7 +16,7 @@ quiz_storage_tool = FunctionTool(func=store_quiz_data)
 
 education_agent = Agent(
     name="tools_lol",
-    model="gemini-2.5-flash",
+    model="gemini-2.0-flash",
     description="A Retrieval-Augmented Generation agent for document analysis.and flashcard generation",
     instruction="""
     ## MANDATORY WORKFLOW (Initial Summary)

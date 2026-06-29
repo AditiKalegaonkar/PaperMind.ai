@@ -4,7 +4,7 @@ from google.genai import types
 
 flashcard_agent = Agent(
     name="flashcard_agent",
-    model="gemini-2.5-flash",
+    model="gemini-2.0-flash",
     description="Creates STRICT JSON flashcards from text.",
     instruction="""
         You are a flashcard generation agent.

@@ -167,7 +167,7 @@ compare_stocks_tool = FunctionTool(func=compare_stocks)
 
 recommendation_agent = Agent(
     name="investment_recommender",
-    model="gemini-2.5-flash",
+    model="gemini-2.0-flash",
     description="Provides investment recommendations, buy/sell/hold signals, and stock comparison analysis",
     instruction="""
     You are an Investment Recommender agent specialized in providing financial investment advice.

@@ -19,7 +19,7 @@ def append_response(response: str, tool_context: ToolContext):
 # Root agent definition
 legal_agent = Agent(
     name="root_agent",
-    model="gemini-2.5-flash",
+    model="gemini-2.0-flash",
     description="""
         Your task is to execute a sequence of agent tools, collect their responses, and return a single consolidated output. Follow these steps carefully:
         1. Call rag_agent_tool and store its response.

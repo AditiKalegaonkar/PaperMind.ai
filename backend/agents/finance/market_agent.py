@@ -14,7 +14,7 @@ get_prices_snapshot_tool = FunctionTool(func=get_price_snapshot)
 
 market_analyst_agent = Agent(
     name="market_analyst",
-    model="gemini-2.5-flash",
+    model="gemini-2.0-flash",
     description="Analyzes market trends, sector performance, and provides market insights",
     instruction="""
     You are a Market Analyst agent specialized in market-wide analysis and trends.

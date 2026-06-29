@@ -101,7 +101,7 @@ calculate_allocation_tool = FunctionTool(func=calculate_allocation)
 
 portfolio_analyzer_agent = Agent(
     name="portfolio_analyzer",
-    model="gemini-2.5-flash",
+    model="gemini-2.0-flash",
     description="Analyzes investment portfolios, calculates holdings allocation, and provides insights on stock positions",
     instruction="""
     You are a Portfolio Analyzer agent specialized in analyzing investment portfolios.

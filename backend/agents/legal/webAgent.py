@@ -5,7 +5,7 @@ from google.genai import types
 
 search_the_web = Agent(
     name="search_the_web",
-    model="gemini-2.5-flash",
+    model="gemini-2.0-flash",
     description="Agent that performs Google searches and gives proper structured output.",
     tools=[google_search],
     generate_content_config=types.GenerateContentConfig(

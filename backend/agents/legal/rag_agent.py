@@ -36,7 +36,7 @@ file_path_tool = FunctionTool(func=get_file_path)
 
 rag_agent = Agent(
     name="RAG_agent",
-    model="gemini-2.5-flash",
+    model="gemini-2.0-flash",
     description="A Retrieval-Augmented Generation agent for document analysis.",
     instruction="""
     You are a helpful assistant that analyzes legal documents.

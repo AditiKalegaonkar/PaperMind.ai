@@ -5,7 +5,7 @@ from google.genai import types
 
 risk_analyser_agent = Agent(
     name="risk_analyser_agent",
-    model="gemini-2.5-flash",
+    model="gemini-2.0-flash",
     description="Agent that analyzes risk information from RAG output and provides structured legal-risk insights.",
     instruction="""
             You have access to the tool:

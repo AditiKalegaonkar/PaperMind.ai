@@ -337,7 +337,7 @@ def run_qdrant_rag(user_path: str, question: str) -> str:
         docs = _deduplicate_docs(raw_docs)[:6]  # keep at most 6 diverse chunks
         context = "\n\n---\n\n".join(d.page_content for d in docs)
 
-        llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.3)
+        llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.3)
 
         # FIX: question and system instructions are now separate — no double
         # injection of the question into the prompt.

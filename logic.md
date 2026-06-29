@@ -1401,7 +1401,7 @@ def run_qdrant_rag(user_path: str, init_prompt: str) -> str:
     retriever = db.as_retriever(search_kwargs={"k": 5})
     
     # 4. Create LLM
-    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.4)
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.4)
     
     # 5. Build chain
     chain = (
