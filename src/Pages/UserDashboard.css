@@ -322,7 +322,7 @@ textarea { font-family: inherit; }
 .pm-session-list::-webkit-scrollbar-track { background: transparent; }
 
 .pm-empty { 
-  text-align: center; 
+  text-align: left;
   color: var(--muted); 
   font-size: 13px; 
   padding: 24px 12px; 
