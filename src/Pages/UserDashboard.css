@@ -27,7 +27,8 @@
 
 html, body { background: var(--bg); color: var(--text); font-family: var(--font); }
 #root { height: 100%; background: var(--bg); }
-button { font-family: inherit; cursor: pointer; border: none; background: none; }
+button { font-family: inherit; cursor: pointer; border: none; background: none; padding: 0; font-size: inherit; font-weight: inherit; }
+button:focus, button:focus-visible { outline: none; }
 textarea { font-family: inherit; }
 
 .pm-layout {
@@ -519,10 +520,6 @@ textarea { font-family: inherit; }
   stroke: #fff;
 }
 
-.pm-doc-btn {
-  margin-left: auto;
-}
-
 .pm-topbar-title {
   flex: 1;
   font-size: 15px;
@@ -657,7 +654,6 @@ textarea { font-family: inherit; }
 .pm-bubble--thinking { display: flex; align-items: center; min-height: 40px; }
 
 .pm-user-text { font-size: 14px; line-height: 1.6; }
-.bot-text { font-family: var(--font); font-size: 14px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
 .bot-markdown { font-family: var(--font); font-size: 14px; line-height: 1.7; }
 .bot-markdown p { margin: 0 0 10px 0; }
 .bot-markdown p:last-child { margin-bottom: 0; }
@@ -766,6 +762,7 @@ textarea { font-family: inherit; }
   overflow-y: auto;
   min-height: 24px;
   max-height: 140px;
+  text-align: center;
   scrollbar-width: thin;
 }
 .pm-textarea::placeholder { color: var(--muted); }
@@ -776,6 +773,7 @@ textarea { font-family: inherit; }
   justify-content: center;
   width: 36px;
   height: 36px;
+  padding: 0;
   border-radius: 10px;
   color:white;
   background: var(--primary);
@@ -784,29 +782,21 @@ textarea { font-family: inherit; }
   align-self: flex-end;
   box-shadow: 0 2px 8px rgba(82, 95, 225, 0.3);
 }
-.send-icon {
-  fill:none;
-  stroke: var(--bg);
-}
-.send-icon{
-  fill:none;
-  stroke: var(--bg);
-}
 .pm-send:hover:not(:disabled) { 
   background: var(--primary-dark); 
   box-shadow: 0 2px 12px rgba(58, 68, 153, 0.4); 
 }
 .pm-send:hover:not(:disabled) svg {
-  stroke: red;
+  stroke: #fff;
 }
 .pm-send--off {
   opacity: .4;
   cursor: not-allowed;
-  background:var(--border);
+  background: var(--border);
   box-shadow: none;
 }
-.pm-send--off svg{
-  stroke:red;
+.pm-send--off svg {
+  stroke: var(--muted);
 }
 .pm-hint {
   font-size: 11px;
@@ -814,7 +804,6 @@ textarea { font-family: inherit; }
   margin-top: 6px;
   text-align: center;
 }
-.pm-hint { font-size: 11px; color: var(--muted); margin-top: 6px; text-align: center; }
 
 /* Document Sidebar - RIGHT SIDE */
 .pm-doc-sidebar {
@@ -999,116 +988,9 @@ textarea { font-family: inherit; }
 }
 .pm-doc-clear:hover { color: var(--err); border-color: var(--err); }
 
-/* Flashcard Viewer */
-.pm-flashcard-viewer {
-  background: var(--surface);
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  padding: 16px;
-  margin: 10px 0;
-}
+/* Flashcard link box (inline in chat) */
 
-.pm-flashcard-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.pm-flashcard-header h3 {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--accent);
-}
-
-.pm-flashcard-tabs {
-  display: flex;
-  gap: 4px;
-  background: var(--surface2);
-  padding: 4px;
-  border-radius: 8px;
-}
-
-.pm-flashcard-tab {
-  padding: 6px 14px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-light);
-  transition: all .15s;
-}
-
-.pm-flashcard-tab:hover { color: var(--accent); }
-.pm-flashcard-tab.active {
-  background: var(--accent);
-  color: #fff;
-}
-
-.pm-flashcard-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 12px;
-}
-
-.pm-flashcard-grid-item {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 14px;
-  cursor: pointer;
-  transition: all .15s;
-}
-
-.pm-flashcard-grid-item:hover {
-  border-color: var(--accent);
-  box-shadow: 0 4px 12px rgba(248, 111, 3, 0.15);
-}
-
-.pm-flashcard-question {
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--accent);
-  margin-bottom: 8px;
-}
-
-.pm-flashcard-answer {
-  font-size: 13px;
-  color: var(--text-light);
-  line-height: 1.5;
-}
-
-.pm-flashcard-open-btn {
-  margin-top: 10px;
-  padding: 6px 12px;
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: background .15s;
-}
-
-.pm-flashcard-open-btn:hover { background: var(--accent-dark); }
-
-/* Risk Chart */
-.pm-risk-chart {
-  background: var(--surface);
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  padding: 16px;
-  margin: 10px 0;
-}
-
-.pm-risk-chart-error {
-  color: var(--err);
-  font-size: 13px;
-  padding: 16px;
-  text-align: center;
-}
-.pm-chart-box { background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 10px; padding: 16px; margin-top: 8px; }
+/* Chart Box */
 .pm-chart-title { margin: 0 0 12px; font-size: 15px; font-weight: 600; }
 .pm-chart-section-label { font-size: 12px; font-weight: 600; color: #666; margin: 0 0 6px; text-transform: uppercase; }
 .pm-chart-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
@@ -1129,7 +1011,6 @@ textarea { font-family: inherit; }
     box-shadow: 4px 0 20px rgba(108, 92, 231, 0.2);
   }
   .pm-topbar { gap: 8px; padding: 12px 14px; }
-  .pm-doc-btn { margin-left: 0; }
   .pm-messages { padding: 16px 14px; }
   .pm-input-area { padding: 10px 14px 14px; }
 }

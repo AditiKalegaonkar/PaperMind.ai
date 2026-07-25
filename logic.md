@@ -758,18 +758,14 @@ curl -X POST "http://localhost:8000/chat" \
 
 | Component | Tests | Status |
 |-----------|-------|--------|
-| Login | 8 test cases | ✓ Passing |
-| SignUp | 6 test cases | ✓ Passing |
-| Dashboard | 5 test cases | ✓ Passing |
-| Navbar | 4 test cases | ✓ Passing |
-| Footer | 3 test cases | ✓ Passing |
-| Contacts | 2 test cases | ✓ Passing |
-| About | 3 test cases | ✓ Passing |
-| Color/Icons | 5 test cases | ✓ Passing |
+| Test infrastructure | Vitest + React Testing Library | Configured |
+| Test files | 0 (pending) | Setup ready |
+
+> **Note:** The testing framework is fully configured in `package.json`. Test files should be created in `src/test/` with `*.test.jsx` extensions. The project uses Vitest for test execution and React Testing Library for component testing.
 
 ### Test Cases by Feature
 
-#### Authentication Tests (Login.test.jsx)
+#### Suggested Authentication Tests (Login.test.jsx)
 ```javascript
 ✓ renders login form correctly
 ✓ shows validation errors for empty fields
@@ -780,7 +776,7 @@ curl -X POST "http://localhost:8000/chat" \
 ✓ has forgot password link
 ```
 
-#### Authentication Tests (SignUp.test.jsx)
+#### Suggested Authentication Tests (SignUp.test.jsx)
 ```javascript
 ✓ renders signup form correctly
 ✓ shows validation for existing email
@@ -790,7 +786,7 @@ curl -X POST "http://localhost:8000/chat" \
 ✓ handles Google signup
 ```
 
-#### Dashboard Tests (Dashboard.test.jsx)
+#### Suggested Dashboard Tests (Dashboard.test.jsx)
 ```javascript
 ✓ renders hero section
 ✓ displays feature cards
@@ -877,7 +873,8 @@ GET  /auth/logout             # User logout
 POST /api/chat                # Send message (with streaming)
 GET  /api/sessions            # Get all chat sessions
 GET  /api/chat/:sessionId     # Get session messages
-PATCH /api/chat/:sessionId/rename  # Rename session
+PATCH /api/chat/:sessionId/rename     # Rename session
+PATCH /api/chat/:sessionId/metadata   # Update session metadata
 DELETE /api/chat/:sessionId   # Delete session
 ```
 
@@ -887,8 +884,9 @@ POST /chat                    # Agent chat processing
 GET  /health                  # FastAPI health check
 GET  /sessions/:username      # Get user sessions
 GET  /chat/:username/:sessionId  # Get chat history
-PATCH /chat/:username/:sessionId/rename
-DELETE /chat/:username/:sessionId
+PATCH /chat/:username/:sessionId/rename   # Rename session
+PATCH /chat/:username/:sessionId/metadata # Update session metadata
+DELETE /chat/:username/:sessionId          # Delete session
 ```
 
 ### Setup Guide
@@ -977,6 +975,7 @@ PaperMind.ai/
 │   ├── Components/               # Reusable Components
 │   │   ├── DocumentViewer.jsx    # PDF viewing
 │   │   ├── FlashcardViewer.jsx  # Flashcard display
+│   │   ├── FlashcardsPage.jsx   # Standalone flashcards page
 │   │   ├── Navbar.jsx           # Navigation
 │   │   ├── Footer.jsx           # Footer
 │   │   ├── RiskChart.jsx        # Visualization
@@ -992,7 +991,7 @@ PaperMind.ai/
 │   │   └── Contacts.jsx        # Contact
 │   │
 │   ├── services/                 # Services
-│   │   ├── server.js            # Express
+│   │   ├── server.js            # Express proxy server
 │   │   ├── passport.js          # Auth config
 │   │   └── Database/            # MongoDB models
 │   │
@@ -1001,23 +1000,28 @@ PaperMind.ai/
 ├── backend/                      # Python Backend
 │   └── agents/
 │       ├── main.py              # FastAPI entry
+│       ├── general/             # General domain
+│       │   └── rag_agent.py
 │       ├── legal/               # Legal domain
 │       │   ├── agent.py
 │       │   ├── rag_agent.py
 │       │   ├── risk_analysis_agent.py
 │       │   ├── dictionary_agent.py
+│       │   ├── chart_agent.py
 │       │   └── webAgent.py
 │       │
 │       ├── education/           # Education domain
 │       │   ├── agent.py
-│       │   ├── rag_agent.py
+│       │   ├── Rag_agent.py
 │       │   └── flashcard_agent.py
 │       │
 │       ├── finance/             # Finance domain
 │       │   ├── agent.py
 │       │   ├── portfolio_agent.py
 │       │   ├── recommendation_agent.py
-│       │   └── market_agent.py
+│       │   ├── recommender.py
+│       │   ├── market_agent.py
+│       │   └── rag_agent.py
 │       │
 │       └── tools/               # Shared tools
 │           ├── RAG.py
@@ -1110,8 +1114,7 @@ For testing purposes, users can:
 | Page Load Time | <2s | <3s |
 | API Response Time | <500ms | <1s |
 | Document Processing | <5s | <10s |
-| Streaming Start | <1s | <3s |
-| Test Pass Rate | 100% | 100% |
+| Streaming Start | <3s | <3s |
 
 ### User Workflows Demonstrated
 
@@ -1134,16 +1137,22 @@ For testing purposes, users can:
    - Results displayed in real-time
    - Option to save as session
 
+4. **Flashcard Generation**
+   - Education agent generates flashcards from document content
+   - Flashcards displayed inline in chat with "View Flashcards" button
+   - Navigate to `/flashcards` for full flashcard viewer
+   - Grid, list, and quiz modes available
+
 ### Code Quality Metrics
 
 | Metric | Value |
 |--------|-------|
-| ESLint | Configured |
-| Test Framework | Vitest |
-| Test Files | 9 |
-| Test Coverage | Component-level |
-| Build Tool | Vite |
-| Bundle Size | Optimized |
+| ESLint | Not configured (no linter) |
+| Test Framework | Vitest 4.1.0 |
+| Test Files | 0 (infrastructure configured) |
+| Test Coverage | Pending implementation |
+| Build Tool | Vite 7.1.7 |
+| Bundle Size | Optimized via Vite |
 
 ### Screenshots/Visual Evidence
 
@@ -1152,8 +1161,9 @@ The following UI components demonstrate usability:
 - Login/signup forms with validation
 - User dashboard with chat interface
 - Document viewer with PDF rendering
-- Flashcard viewer for education
+- Flashcard viewer for education (grid, list, quiz modes)
 - Responsive design across devices
+- Session sidebar with search, rename, and delete
 
 ---
 
@@ -1174,8 +1184,8 @@ PaperMind.ai represents a comprehensive, production-ready solution for AI-powere
 
 ---
 
-**Document Version:** 1.0  
-**Last Updated:** March 2025  
+**Document Version:** 1.1  
+**Last Updated:** July 2026  
 **Project Repository:** https://github.com/AditiKalegaonkar/PaperMind.ai
 
 ---

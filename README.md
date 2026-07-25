@@ -79,6 +79,7 @@ PaperMind.ai/
 │   ├── Components/               # Reusable React Components
 │   │   ├── DocumentViewer.jsx    # PDF/Image document viewer
 │   │   ├── FlashcardViewer.jsx  # Flashcard display component
+│   │   ├── FlashcardsPage.jsx   # Standalone flashcards page
 │   │   ├── Footer.jsx           # Site footer
 │   │   ├── Navbar.jsx           # Navigation bar
 │   │   ├── RiskChart.jsx       # Risk visualization
@@ -119,18 +120,24 @@ PaperMind.ai/
 │       │   ├── rag_agent.py     # Document RAG
 │       │   ├── risk_analysis_agent.py
 │       │   ├── dictionary_agent.py
+│       │   ├── chart_agent.py
 │       │   └── webAgent.py
 │       │
 │       ├── education/           # Education domain agents
 │       │   ├── agent.py
-│       │   ├── rag_agent.py
+│       │   ├── Rag_agent.py
 │       │   └── flashcard_agent.py
 │       │
 │       ├── finance/             # Finance domain agents
 │       │   ├── agent.py
 │       │   ├── portfolio_agent.py
 │       │   ├── recommendation_agent.py
-│       │   └── market_agent.py
+│       │   ├── recommender.py
+│       │   ├── market_agent.py
+│       │   └── rag_agent.py
+│       │
+│       ├── general/             # General domain agents
+│       │   └── rag_agent.py
 │       │
 │       └── tools/               # Shared tools
 │           ├── RAG.py
@@ -142,7 +149,6 @@ PaperMind.ai/
 ├── public/                       # Public static files
 ├── package.json                 # Node.js dependencies
 ├── vite.config.js              # Vite configuration
-├── vitest.config.js            # Test configuration
 ├── docker-compose.yml          # Docker orchestration
 └── Dockerfile*                  # Docker images
 ```
@@ -151,7 +157,7 @@ PaperMind.ai/
 
 ### Frontend Features
 - **Landing Page (Dashboard)**: Hero section, agent cards, feature showcase, CTA
-- **User Authentication**: Email/password login + Google OAuth 2.0
+- **User Authentication**: Email/password login + Google OAuth 2.0 (JWT-based)
 - **User Dashboard**: 
   - Chat interface with streaming responses
   - Multi-domain agent selection (Legal, Education, Finance, General)
@@ -159,6 +165,7 @@ PaperMind.ai/
   - Session management (create, rename, delete)
   - Document viewer with PDF support
   - Flashcard generation and display
+  - Standalone flashcards page at `/flashcards`
 - **Responsive Design**: Mobile-friendly with adaptive layouts
 
 ### Backend Features
@@ -182,9 +189,13 @@ The application uses a consistent color scheme:
 | Primary Dark    | #3A4499   | Active states                  |
 | Accent          | #F86F03   | CTAs, highlights              |
 | Accent Light    | #FFA41B   | Secondary accents             |
+| Accent Dark     | #CC4E02   | Active accent states           |
 | Background      | #F5F6FF   | Page backgrounds              |
 | Surface         | #FFFFFF   | Card backgrounds              |
 | Surface 2       | #EEF0FF   | Input backgrounds             |
+| Border          | #C5C6D0   | Borders, dividers             |
+| Muted           | #9CA3AF   | Placeholder text, hints       |
+| Text Light      | #636E72   | Secondary text                |
 | Error           | #D63031   | Error messages                |
 
 ## Icons & Assets
@@ -222,7 +233,8 @@ GET  /auth/logout             # User logout
 POST /api/chat                # Send message (with streaming)
 GET  /api/sessions            # Get all chat sessions
 GET  /api/chat/:sessionId     # Get session messages
-PATCH /api/chat/:sessionId/rename  # Rename session
+PATCH /api/chat/:sessionId/rename     # Rename session
+PATCH /api/chat/:sessionId/metadata   # Update session metadata
 DELETE /api/chat/:sessionId   # Delete session
 ```
 
@@ -237,8 +249,9 @@ POST /chat                    # Agent chat processing
 GET  /health                  # FastAPI health
 GET  /sessions/:username      # Get user sessions
 GET  /chat/:username/:sessionId  # Get chat history
-PATCH /chat/:username/:sessionId/rename
-DELETE /chat/:username/:sessionId
+PATCH /chat/:username/:sessionId/rename   # Rename session
+PATCH /chat/:username/:sessionId/metadata # Update session metadata
+DELETE /chat/:username/:sessionId          # Delete session
 ```
 
 ## Setup Instructions
@@ -304,8 +317,12 @@ python main.py
 # Build frontend
 npm run build
 
-# Start production server
-npm start
+# Start Express proxy server
+node src/services/server.js
+
+# Start FastAPI server (separate terminal)
+cd backend/agents
+python main.py
 ```
 
 #### Docker
@@ -316,7 +333,7 @@ docker-compose up --build
 ## Testing
 
 ```bash
-# Run all tests
+# Run all tests (vitest)
 npm test
 
 # Run tests in watch mode
@@ -328,6 +345,8 @@ npm run test:coverage
 # Run unit tests
 npm run test:unit
 ```
+
+> **Note:** The testing infrastructure (Vitest + React Testing Library) is configured. Test files should be placed in `src/test/` with `*.test.jsx` extensions.
 
 ## Research & Evaluation
 

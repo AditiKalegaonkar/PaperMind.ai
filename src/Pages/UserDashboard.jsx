@@ -809,7 +809,7 @@ export default function UserDashboard() {
             <textarea
               ref={textarea} className="pm-textarea" value={input}
               onChange={e => setInput(e.target.value)} onKeyDown={handleKey}
-              placeholder="Ask anything… or drop files anywhere" disabled={busy} rows={1} align="center"
+              placeholder="Ask anything… or drop files anywhere" disabled={busy} rows={1}
             />
             <button
               className={`pm-send ${(!input.trim() && files.length === 0) || busy ? 'pm-send--off' : ''}`}

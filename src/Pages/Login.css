@@ -54,6 +54,12 @@ input {
 
 .password {
   position: relative;
+  width: 250px;
+}
+
+.password input {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .password span {
@@ -62,8 +68,9 @@ input {
   top: 50%;
   transform: translateY(-50%);
   cursor: pointer;
-  /* Icon color changed to indigo */
   color: #525fe1;
+  display: flex;
+  align-items: center;
 }
 
 .login-options {

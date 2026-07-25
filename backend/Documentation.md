@@ -18,8 +18,10 @@ FastAPI backend with MongoDB integration and ADK session management.
 - `agent` (required): "legal", "education", "finance", or "general"
 - `username` (required): User's email (must exist in users collection)
 - `question` (required): User's question
-- `sessionId` (optional): ADK Session ID (creates new if not provided)
-- `file` (optional): File upload
+- `sessionId` (optional): Frontend session ID (creates new if not provided)
+- `stream` (optional): "true" to enable SSE streaming
+- `files` (optional): File upload (PDF, DOC, DOCX, TXT, PNG, JPG)
+- `documents` (optional): Array of document names to include
 
 **Response:**
 ```json
@@ -74,6 +76,28 @@ Load chat history for a session.
 curl "http://localhost:8000/chat/user@example.com/adk-session-id"
 ```
 
+### PATCH /chat/{username}/{session_id}/rename
+
+Rename a session.
+
+**Request Body (JSON):**
+```json
+{ "title": "New Session Name" }
+```
+
+### PATCH /chat/{username}/{session_id}/metadata
+
+Update session metadata (e.g., associated documents).
+
+**Request Body (JSON):**
+```json
+{ "documents": ["file1.pdf", "file2.pdf"] }
+```
+
+### DELETE /chat/{username}/{session_id}
+
+Delete a session and its messages.
+
 ### GET /sessions/{username}
 
 Get all sessions for a user.
@@ -106,14 +130,20 @@ curl "http://localhost:8000/sessions/user@example.com"
   userId: ObjectId (ref: User),
   sessions: [
     {
-      sessionId: String,  // ADK session ID from session_service
+      sessionId: String,  // Frontend session ID (UUID)
+      adkSessionId: String,  // ADK session ID from session_service
+      agent: String,  // "legal", "education", "finance", "general"
+      title: String,  // User-defined session title
+      documents: [String],  // List of uploaded document names
       messages: [
         {
           message: String,
           answer: String,
-          timestamp: Date
+          timestamp: Date,
+          files: [String]  // Optional file names attached to message
         }
       ],
+      messageCount: Number,
       createdAt: Date,
       updatedAt: Date
     }
@@ -194,6 +224,10 @@ print(resp.json()["messages"])
 
 **"User not found"** → User must exist in MongoDB users collection
 
-**"Session not found"** → Use the ADK session ID from POST /chat response
+**"Session not found"** → Use the frontend session ID from POST /api/chat response (not the ADK session ID)
 
 **MongoDB connection error** → `sudo systemctl start mongod`
+
+**"VITE_API_URL is not set"** → Ensure your `.env` file in the project root contains `VITE_API_URL=http://localhost:5000`
+
+**Streaming not working** → Ensure both the Express proxy (`node src/services/server.js`) and FastAPI server (`python main.py`) are running
