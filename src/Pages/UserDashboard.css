@@ -762,10 +762,10 @@ textarea { font-family: inherit; }
   overflow-y: auto;
   min-height: 24px;
   max-height: 140px;
-  text-align: center;
+  text-align: left;
   scrollbar-width: thin;
 }
-.pm-textarea::placeholder { color: var(--muted); }
+.pm-textarea::placeholder { color: var(--muted); text-align: left; }
 
 .pm-send {
   display: flex;
